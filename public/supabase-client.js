@@ -31,7 +31,7 @@ export async function getSupabaseClient() {
       signInWithPassword: async ({ email, password }) => { const result = await request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); return { error: result.error }; },
       signOut: async () => { const result = await request('/api/auth/logout', { method: 'POST' }); return { error: result.error }; }
     },
-    from: () => ({ select: () => new ProjectRequest('GET'), insert: (payload) => new ProjectRequest('POST', payload), update: (payload) => new ProjectRequest('PATCH', payload) }),
+    from: () => ({ select: () => new ProjectRequest('GET'), insert: (payload) => new ProjectRequest('POST', payload), update: (payload) => new ProjectRequest('PATCH', payload), delete: () => new ProjectRequest('DELETE') }),
     storage: { from: () => ({
       upload: async (path, file) => { const result = await request(`/api/media?path=${encodeURIComponent(path)}`, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file }); return { data: result.data, error: result.error }; },
       createSignedUrl: async (path) => ({ data: { signedUrl: `/media/${path}` }, error: null })

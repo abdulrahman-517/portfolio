@@ -26,13 +26,20 @@ function notice(message = '', tone = 'info') {
 }
 
 function shell(title, subtitle, content, active = '') {
-  app.innerHTML = `<div class="studio-shell"><button class="studio-menu-toggle" type="button" data-studio-menu aria-label="فتح القائمة" aria-expanded="false">القائمة</button><aside class="studio-sidebar"><a class="studio-brand" href="/studio/">بنية ستوديو</a><nav class="studio-nav" aria-label="تنقل الاستديو"><a href="/studio/" ${active === 'overview' ? 'aria-current="page"' : ''}>نظرة عامة</a><a href="/studio/projects/" ${active === 'projects' ? 'aria-current="page"' : ''}>المشاريع</a><a href="/studio/projects/new" ${active === 'new' ? 'aria-current="page"' : ''}>إضافة مشروع</a><a href="/studio/projects/?view=media" ${active === 'media' ? 'aria-current="page"' : ''}>مكتبة الوسائط</a><a href="/" target="_blank" rel="noopener noreferrer">معاينة الموقع</a><a href="/studio/" aria-disabled="true">الإعدادات</a><span class="studio-nav__spacer"></span><button type="button" class="studio-nav__signout" data-sign-out>تسجيل الخروج</button></nav></aside><main class="studio-main"><header class="studio-topbar"><div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div></header><div class="studio-notice" data-studio-notice role="status" aria-live="polite"></div>${content}</main></div>`;
+  app.innerHTML = `<div class="studio-shell"><button class="studio-menu-toggle" type="button" data-studio-menu aria-label="فتح القائمة" aria-controls="studio-sidebar" aria-expanded="false">القائمة</button><main class="studio-main"><div class="studio-main-inner"><header class="studio-topbar"><div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div></header><div class="studio-notice" data-studio-notice role="status" aria-live="polite"></div>${content}</div></main><aside class="studio-sidebar" id="studio-sidebar"><a class="studio-brand" href="/studio/">بنية ستوديو</a><nav class="studio-nav" aria-label="تنقل الاستديو"><a href="/studio/" ${active === 'overview' ? 'aria-current="page"' : ''}>نظرة عامة</a><a href="/studio/projects/" ${active === 'projects' ? 'aria-current="page"' : ''}>المشاريع</a><a href="/studio/projects/new" ${active === 'new' ? 'aria-current="page"' : ''}>إضافة مشروع</a><a href="/studio/media/" ${active === 'media' ? 'aria-current="page"' : ''}>مكتبة الوسائط</a><a href="/" target="_blank" rel="noopener noreferrer">معاينة الموقع</a><a href="/studio/settings/" ${active === 'settings' ? 'aria-current="page"' : ''}>الإعدادات</a><span class="studio-nav__spacer"></span><button type="button" class="studio-nav__signout" data-sign-out>تسجيل الخروج</button></nav></aside></div>`;
   document.querySelector('[data-sign-out]')?.addEventListener('click', signOut);
+  const closeMenu = () => {
+    document.body.classList.remove('studio-menu-open');
+    document.querySelector('[data-studio-menu]')?.setAttribute('aria-expanded', 'false');
+    document.querySelector('[data-studio-menu]')?.setAttribute('aria-label', 'فتح القائمة');
+  };
   document.querySelector('[data-studio-menu]')?.addEventListener('click', (event) => {
     const open = document.body.classList.toggle('studio-menu-open');
     event.currentTarget.setAttribute('aria-expanded', String(open));
     event.currentTarget.setAttribute('aria-label', open ? 'إغلاق القائمة' : 'فتح القائمة');
   });
+  document.querySelectorAll('.studio-nav a').forEach((link) => link.addEventListener('click', closeMenu));
+  document.onkeydown = (event) => { if (event.key === 'Escape') closeMenu(); };
 }
 
 async function signOut() {
@@ -83,7 +90,7 @@ function projectImage(project) {
 }
 
 function projectRows(list) {
-  return list.map((project) => `<tr draggable="true" data-project-row="${project.id}"><td><div class="studio-thumb">${projectImage(project)}</div></td><td><strong>${esc(project.title_ar || project.title_en || project.slug)}</strong><br><span class="studio-help studio-ltr">${esc(project.slug)}</span></td><td><span class="studio-badge studio-badge--${project.status}">${esc(statusLabel(project.status))}</span></td><td>${project.visible ? 'ظاهر' : 'مخفي'}</td><td>${project.featured ? 'مميز' : 'غير مميز'}</td><td>${project.sort_order}</td><td>${formatDate(project.updated_at)}</td><td><div class="studio-row-actions"><a class="studio-icon-button" href="/studio/projects/${project.id}" aria-label="تعديل ${esc(project.title_ar || project.title_en || project.slug)}">تعديل</a><button class="studio-icon-button" type="button" data-preview="${project.id}" aria-label="معاينة ${esc(project.title_ar || project.title_en || project.slug)}">معاينة</button><button class="studio-icon-button" type="button" data-publish="${project.id}" aria-label="${project.status === 'published' ? 'إلغاء نشر' : 'نشر'} ${esc(project.title_ar || project.title_en || project.slug)}">${project.status === 'published' ? 'إلغاء النشر' : 'نشر'}</button><button class="studio-icon-button" type="button" data-move="up:${project.id}" aria-label="نقل للأعلى">أعلى</button><button class="studio-icon-button" type="button" data-move="down:${project.id}" aria-label="نقل للأسفل">أسفل</button><button class="studio-icon-button studio-icon-button--danger" type="button" data-archive="${project.id}" aria-label="أرشفة ${esc(project.title_ar || project.title_en || project.slug)}">أرشفة</button></div></td></tr>`).join('');
+  return list.map((project) => `<tr draggable="true" data-project-row="${project.id}"><td><div class="studio-thumb">${projectImage(project)}</div></td><td><strong>${esc(project.title_ar || project.title_en || project.slug)}</strong><br><span class="studio-help studio-ltr">${esc(project.slug)}</span></td><td><span class="studio-badge studio-badge--${project.status}">${esc(statusLabel(project.status))}</span></td><td>${project.visible ? 'ظاهر' : 'مخفي'}</td><td>${project.featured ? 'مميز' : 'غير مميز'}</td><td>${project.sort_order}</td><td>${formatDate(project.updated_at)}</td><td><div class="studio-row-actions"><a class="studio-icon-button" href="/studio/projects/${project.id}" aria-label="تعديل ${esc(project.title_ar || project.title_en || project.slug)}">تعديل</a><button class="studio-icon-button" type="button" data-preview="${project.id}" aria-label="معاينة ${esc(project.title_ar || project.title_en || project.slug)}">معاينة</button><button class="studio-icon-button" type="button" data-publish="${project.id}" aria-label="${project.status === 'published' ? 'إلغاء نشر' : 'نشر'} ${esc(project.title_ar || project.title_en || project.slug)}">${project.status === 'published' ? 'إلغاء النشر' : 'نشر'}</button><button class="studio-icon-button" type="button" data-move="up:${project.id}" aria-label="نقل للأعلى">أعلى</button><button class="studio-icon-button" type="button" data-move="down:${project.id}" aria-label="نقل للأسفل">أسفل</button><button class="studio-icon-button studio-icon-button--danger" type="button" data-archive="${project.id}" aria-label="أرشفة ${esc(project.title_ar || project.title_en || project.slug)}">أرشفة</button><button class="studio-icon-button studio-icon-button--danger" type="button" data-delete="${project.id}" aria-label="حذف ${esc(project.title_ar || project.title_en || project.slug)}">حذف</button></div></td></tr>`).join('');
 }
 
 function renderProjects() {
@@ -113,11 +120,20 @@ function renderMediaLibrary() {
   return `<section class="studio-media">${cards || '<p class="studio-help">ارفع صور الغلاف من محرر كل مشروع.</p>'}</section>`;
 }
 
+function renderMediaPage() {
+  shell('مكتبة الوسائط', 'استعرض صور المشاريع المحفوظة وافتح المشروع لتحديثها أو استبدالها.', renderMediaLibrary(), 'media');
+}
+
+function renderSettings() {
+  shell('الإعدادات', 'إعدادات الوصول وإدارة الاستديو.', `<section class="studio-form-section"><h2 class="studio-form-section__heading">حساب المالك</h2><p class="studio-form-section__hint">هذا الاستديو محمي بحساب المالك المعتمد. استخدم القائمة الجانبية لإدارة المشاريع والوسائط.</p><div class="studio-actions"><a class="studio-button" href="/studio/projects/new">إضافة مشروع</a><a class="studio-button studio-button--quiet" href="/" target="_blank" rel="noopener noreferrer">معاينة الموقع</a></div></section>`, 'settings');
+}
+
 function bindProjectActions() {
   document.querySelectorAll('[data-preview]').forEach((button) => button.addEventListener('click', () => setRoute(`/studio/projects/${button.dataset.preview}?preview=1`)));
   document.querySelectorAll('[data-publish]').forEach((button) => button.addEventListener('click', () => togglePublished(button.dataset.publish)));
   document.querySelectorAll('[data-move]').forEach((button) => button.addEventListener('click', () => { const [direction, id] = button.dataset.move.split(':'); moveProject(id, direction); }));
   document.querySelectorAll('[data-archive]').forEach((button) => button.addEventListener('click', () => confirmArchive(button.dataset.archive)));
+  document.querySelectorAll('[data-delete]').forEach((button) => button.addEventListener('click', () => confirmDelete(button.dataset.delete)));
   document.querySelectorAll('[data-project-row]').forEach((row) => {
     row.addEventListener('dragstart', (event) => event.dataTransfer.setData('text/plain', row.dataset.projectRow));
     row.addEventListener('dragover', (event) => event.preventDefault());
@@ -174,6 +190,19 @@ function confirmArchive(id) {
   dialog.showModal();
 }
 
+function confirmDelete(id) {
+  const project = projects.find((item) => item.id === id);
+  const dialog = document.querySelector('[data-archive-dialog]');
+  dialog.innerHTML = `<form method="dialog" class="studio-dialog"><h2>حذف المشروع نهائيًا؟</h2><p>سيُحذف <strong>${esc(project?.title_ar || project?.title_en || project?.slug || '')}</strong> مع الوسائط المرتبطة به، ولا يمكن استعادته.</p><div class="studio-dialog__actions"><button class="studio-button studio-button--quiet" value="cancel">إلغاء</button><button class="studio-button studio-button--danger" value="delete">حذف المشروع</button></div></form>`;
+  dialog.addEventListener('close', async () => {
+    if (dialog.returnValue !== 'delete') return;
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) return notice(error.message, 'error');
+    await refreshRoute('تم حذف المشروع نهائيًا.');
+  }, { once: true });
+  dialog.showModal();
+}
+
 const blankProject = () => ({ title_en: '', title_ar: '', slug: '', category_en: '', category_ar: '', short_description_en: '', short_description_ar: '', long_description_en: '', long_description_ar: '', tech_stack: [], project_url: '', github_url: '', status: 'draft', visible: true, featured: false, sort_order: projects.length + 1, gallery_images: [] });
 
 function field(name, label, value, options = {}) {
@@ -187,8 +216,18 @@ function field(name, label, value, options = {}) {
   return `<div class="studio-field${wide}"><label for="${name}">${esc(label)} ${required}</label>${input}${options.help ? `<p class="studio-help">${esc(options.help)}</p>` : ''}</div>`;
 }
 
+function formSection(title, content, hint = '') {
+  return `<section class="studio-form-section"><h2 class="studio-form-section__heading">${esc(title)}</h2>${hint ? `<p class="studio-form-section__hint">${esc(hint)}</p>` : ''}${content}</section>`;
+}
+
 function projectForm(project) {
-  return `<form class="studio-card studio-form" data-project-form novalidate><div class="studio-form-grid">${field('title_ar', 'العنوان العربي', project.title_ar, { required: true })}${field('title_en', 'العنوان الإنجليزي', project.title_en, { required: true })}${field('category_ar', 'التصنيف العربي', project.category_ar, { required: true })}${field('category_en', 'التصنيف الإنجليزي', project.category_en, { required: true })}${field('short_description_ar', 'الوصف العربي المختصر', project.short_description_ar, { type: 'textarea', required: true, wide: true })}${field('short_description_en', 'الوصف الإنجليزي المختصر', project.short_description_en, { type: 'textarea', required: true, wide: true })}${field('long_description_ar', 'الوصف العربي التفصيلي', project.long_description_ar, { type: 'textarea', wide: true })}${field('long_description_en', 'الوصف الإنجليزي التفصيلي', project.long_description_en, { type: 'textarea', wide: true })}${field('slug', 'المعرّف بالرابط', project.slug, { required: true, help: 'حروف إنجليزية صغيرة وأرقام وشرطات فقط.' })}${field('sort_order', 'ترتيب الظهور', project.sort_order, { type: 'number', required: true })}${field('tech_stack', 'التقنيات المستخدمة', (project.tech_stack || []).join(', '), { wide: true, help: 'افصل بين التقنيات بفاصلة.' })}${field('project_url', 'رابط المشروع الحي', project.project_url, { type: 'url' })}${field('github_url', 'رابط GitHub', project.github_url, { type: 'url' })}<div class="studio-field"><label for="status">الحالة</label><select class="studio-select" id="status" name="status">${['draft', 'published', 'private', 'development', 'archived'].map((status) => `<option value="${status}" ${project.status === status ? 'selected' : ''}>${statusLabel(status)}</option>`).join('')}</select></div><div class="studio-field"><label>إعدادات النشر</label><label class="studio-switch"><input name="visible" type="checkbox" ${project.visible ? 'checked' : ''}> ظاهر في الموقع العام</label><label class="studio-switch"><input name="featured" type="checkbox" ${project.featured ? 'checked' : ''}> مشروع مميز</label></div><div class="studio-field studio-field--wide"><label for="cover">صورة الغلاف</label><input class="studio-input studio-input--ltr" id="cover" name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><p class="studio-help">JPEG أو PNG أو WebP أو AVIF حتى 10 ميغابايت.</p></div><div class="studio-field studio-field--wide"><label for="gallery">صور المعرض</label><input class="studio-input studio-input--ltr" id="gallery" name="gallery" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple></div></div><section class="studio-media" data-current-media></section><section class="studio-card studio-preview" data-preview-surface><p class="studio-help">معاينة خاصة</p><h2>${esc(project.title_ar || project.title_en || 'مشروع بلا عنوان')}</h2><p>${esc(project.short_description_ar || '')}</p><div class="studio-preview__laptop" data-preview-laptop><div class="studio-preview__placeholder">لم تُحدد صورة غلاف</div></div></section><div class="studio-form-actions"><button class="studio-button studio-button--quiet" type="button" data-preview-form>تحديث المعاينة</button><button class="studio-button studio-button--quiet" type="submit" data-intent="draft">حفظ كمسودة</button><button class="studio-button" type="submit" data-intent="publish">نشر المشروع</button><a class="studio-button studio-button--quiet" href="/studio/projects/">إلغاء</a></div></form>`;
+  const basic = `<div class="studio-form-grid">${field('title_ar', 'العنوان العربي', project.title_ar, { required: true })}${field('title_en', 'العنوان الإنجليزي', project.title_en, { required: true })}${field('category_ar', 'التصنيف العربي', project.category_ar, { required: true })}${field('category_en', 'التصنيف الإنجليزي', project.category_en, { required: true })}${field('slug', 'المعرّف بالرابط', project.slug, { required: true, help: 'حروف إنجليزية صغيرة وأرقام وشرطات فقط.' })}${field('sort_order', 'ترتيب الظهور', project.sort_order, { type: 'number', required: true })}</div>`;
+  const descriptions = `<div class="studio-form-grid">${field('short_description_ar', 'الوصف العربي المختصر', project.short_description_ar, { type: 'textarea', required: true, wide: true })}${field('short_description_en', 'الوصف الإنجليزي المختصر', project.short_description_en, { type: 'textarea', required: true, wide: true })}${field('long_description_ar', 'الوصف العربي التفصيلي', project.long_description_ar, { type: 'textarea', wide: true })}${field('long_description_en', 'الوصف الإنجليزي التفصيلي', project.long_description_en, { type: 'textarea', wide: true })}</div>`;
+  const links = `<div class="studio-form-grid">${field('tech_stack', 'التقنيات المستخدمة', (project.tech_stack || []).join(', '), { wide: true, help: 'افصل بين التقنيات بفاصلة.' })}${field('project_url', 'رابط المشروع الحي', project.project_url, { type: 'url' })}${field('github_url', 'رابط GitHub', project.github_url, { type: 'url' })}</div>`;
+  const media = `<div class="studio-form-grid"><div class="studio-field studio-field--wide"><label for="cover">الصورة الرئيسية</label><input class="studio-input studio-input--ltr studio-file-input" id="cover" name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><p class="studio-help">JPEG أو PNG أو WebP أو AVIF حتى 10 ميغابايت.</p></div><div class="studio-field studio-field--wide"><label for="gallery">معرض الصور</label><input class="studio-input studio-input--ltr studio-file-input" id="gallery" name="gallery" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple></div></div><section class="studio-media" data-current-media></section>`;
+  const publishing = `<div class="studio-form-grid"><div class="studio-field"><label for="status">الحالة</label><select class="studio-select" id="status" name="status">${['draft', 'published', 'private', 'development', 'archived'].map((status) => `<option value="${status}" ${project.status === status ? 'selected' : ''}>${statusLabel(status)}</option>`).join('')}</select></div><div class="studio-field"><label>إعدادات النشر</label><div class="studio-switch-group"><label class="studio-switch"><input name="visible" type="checkbox" ${project.visible ? 'checked' : ''}> ظاهر في الموقع العام</label><label class="studio-switch"><input name="featured" type="checkbox" ${project.featured ? 'checked' : ''}> مشروع مميز</label></div></div></div>`;
+  const preview = `<section class="studio-card studio-preview" data-preview-surface><p class="studio-help">معاينة خاصة</p><h2>${esc(project.title_ar || project.title_en || 'مشروع بلا عنوان')}</h2><p>${esc(project.short_description_ar || '')}</p><div class="studio-preview__laptop" data-preview-laptop><div class="studio-preview__placeholder">لم تُحدد صورة غلاف</div></div></section><div class="studio-form-actions"><a class="studio-button studio-button--quiet" href="/studio/projects/">إلغاء</a><button class="studio-button studio-button--quiet" type="button" data-preview-form>تحديث المعاينة</button><button class="studio-button studio-button--quiet" type="submit" data-intent="draft">حفظ كمسودة</button><button class="studio-button" type="submit" data-intent="publish">نشر المشروع</button></div>`;
+  return `<form class="studio-form" data-project-form novalidate>${formSection('المعلومات الأساسية', basic)}${formSection('أوصاف المشروع', descriptions)}${formSection('التقنيات والروابط', links)}${formSection('الصور والوسائط', media, 'ارفع صورة الغلاف وصورًا إضافية للمشروع.')}${formSection('إعدادات الظهور والنشر', publishing)}${formSection('المعاينة والإجراءات', preview)}</form>`;
 }
 
 async function renderProjectEditor(id) {
@@ -282,6 +321,8 @@ function route() {
   if (path === '/studio' || path === '') return renderOverview();
   if (path === '/studio/projects') return renderProjects();
   if (path === '/studio/projects/new') return renderProjectEditor();
+  if (path === '/studio/media') return renderMediaPage();
+  if (path === '/studio/settings') return renderSettings();
   const match = path.match(/^\/studio\/projects\/([\w-]+)$/);
   if (match) return renderProjectEditor(match[1]);
   renderOverview();
