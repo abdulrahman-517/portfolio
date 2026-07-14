@@ -17,6 +17,7 @@ let PROJECTS = [...FALLBACK_PROJECTS];
 let WORK_PROJECTS = FALLBACK_PROJECTS.filter((project) => project.visible !== false);
 
 const icon = (name, className = '') => `<img class="icon ${className}" src="/assets/icons/${name}" alt="" aria-hidden="true">`;
+const workArrow = (direction) => `<svg class="work-control__icon" viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true"><path d="${direction === 'previous' ? '15 5L8 12L15 19' : '9 5L16 12L9 19'}" stroke="#F8FDFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const esc = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const bySlug = (slug) => PROJECTS.find((project) => project.slug === slug);
 const isArabic = (text) => /[\u0600-\u06ff]/.test(text);
@@ -106,7 +107,7 @@ function workShowcase() {
   const project = WORK_PROJECTS[0];
   if (!project) return '';
   const count = WORK_PROJECTS.length;
-  return `<section class="work-showcase" id="projects" aria-labelledby="projects-title" tabindex="0" data-work-showcase data-work-index="0"><div class="work-showcase__scene" aria-hidden="true"><div class="work-showcase__backdrop"></div><div class="work-showcase__parallax"></div><div class="work-showcase__haze"></div><div class="work-showcase__particles"></div><div class="work-showcase__vignette"></div><div class="work-showcase__transition"></div></div><div class="shell work-showcase__shell"><div class="work-showcase__layout"><div class="work-showcase__panel"><div class="work-showcase__panel-frost" aria-hidden="true"></div><h2 class="sr-only" id="projects-title">Selected Work</h2><div class="work-showcase__content" data-work-content aria-live="polite">${workSlideContent(project, 0)}</div></div>${workLaptop(project)}</div><div class="work-showcase__bottom"><div class="work-progress" role="tablist" aria-label="Selected work navigation"><div class="work-progress__rail" aria-hidden="true"></div><div class="work-progress__active" aria-hidden="true"><div class="work-progress__elapsed"></div><span class="work-progress__dot"></span></div>${WORK_PROJECTS.map((item, index) => `<button type="button" class="work-progress__stop" style="left:${(index / count) * 100}%;width:${100 / count}%" data-work-index="${index}" role="tab" aria-label="Show ${esc(item.title)}" aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}"></button>`).join('')}</div><div class="work-showcase__controls"><button class="work-control" type="button" data-work-prev aria-label="Previous project">${icon('arrow-right.svg')}</button><button class="work-control work-control--next" type="button" data-work-next aria-label="Next project">${icon('arrow-right.svg')}</button></div></div><p class="sr-only" data-work-announcement aria-live="polite">Showing ${esc(project.title)}, project 1 of ${count}.</p></div></section>`;
+  return `<section class="work-showcase" id="projects" aria-labelledby="projects-title" tabindex="0" data-work-showcase data-work-index="0"><div class="work-showcase__scene" aria-hidden="true"><div class="work-showcase__backdrop"></div><div class="work-showcase__parallax"></div><div class="work-showcase__haze"></div><div class="work-showcase__particles"></div><div class="work-showcase__vignette"></div><div class="work-showcase__transition"></div></div><div class="shell work-showcase__shell"><div class="work-showcase__layout"><div class="work-showcase__panel"><div class="work-showcase__panel-frost" aria-hidden="true"></div><h2 class="sr-only" id="projects-title">Selected Work</h2><div class="work-showcase__content" data-work-content aria-live="polite">${workSlideContent(project, 0)}</div></div>${workLaptop(project)}</div><div class="work-showcase__bottom"><div class="work-progress" role="tablist" aria-label="Selected work navigation"><div class="work-progress__rail" aria-hidden="true"></div><div class="work-progress__active" aria-hidden="true"><div class="work-progress__elapsed"></div></div>${WORK_PROJECTS.map((item, index) => `<button type="button" class="work-progress__stop" style="left:${count <= 1 ? 0 : (index / (count - 1)) * 100}%" data-work-index="${index}" role="tab" aria-label="Show ${esc(item.title)}" aria-current="${index === 0 ? 'true' : 'false'}" aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}"><span class="work-progress__marker-core" aria-hidden="true"></span></button>`).join('')}<output class="work-progress__counter" data-work-counter aria-live="off">01 / ${String(count).padStart(2, '0')}</output></div><div class="work-showcase__controls"><button class="work-control" type="button" data-work-prev aria-label="Previous project" data-no-drag>${workArrow('previous')}</button><button class="work-control work-control--next" type="button" data-work-next aria-label="Next project" data-no-drag>${workArrow('next')}</button></div></div><p class="sr-only" data-work-announcement aria-live="polite">Showing ${esc(project.title)}, project 1 of ${count}.</p></div></section>`;
 }
 
 function capability(iconName, title, description, tags) {
@@ -147,6 +148,7 @@ function setupWorkShowcase() {
   const stops = [...showcase.querySelectorAll('[data-work-index]')];
   const activeSegment = showcase.querySelector('.work-progress__active');
   const elapsed = showcase.querySelector('.work-progress__elapsed');
+  const counter = showcase.querySelector('[data-work-counter]');
   const hoverCapable = window.matchMedia('(hover: hover)');
   const duration = 6000;
   let index = 0;
@@ -155,6 +157,7 @@ function setupWorkShowcase() {
   let lastTimestamp = 0;
   let progress = 0;
   let dragging = false;
+  let dragIntent = false;
   let hoverPaused = false;
   let pointerStart;
 
@@ -202,11 +205,14 @@ function setupWorkShowcase() {
     preview.alt = `${project.title} project preview`;
     showcase.querySelector('.laptop-screen__mark').innerHTML = icon(project.icon);
     announcement.textContent = `Showing ${project.title}, project ${nextIndex + 1} of ${WORK_PROJECTS.length}.`;
-    activeSegment.style.width = `${100 / WORK_PROJECTS.length}%`;
-    activeSegment.style.transform = `translateX(${nextIndex * 100}%)`;
+    activeSegment.style.width = '100%';
+    activeSegment.style.transform = 'none';
+    counter.value = `${String(nextIndex + 1).padStart(2, '0')} / ${String(WORK_PROJECTS.length).padStart(2, '0')}`;
+    counter.textContent = counter.value;
     stops.forEach((stop, stopIndex) => {
       const active = stopIndex === nextIndex;
       stop.setAttribute('aria-selected', String(active));
+      stop.setAttribute('aria-current', String(active));
       stop.setAttribute('tabindex', active ? '0' : '-1');
     });
   }
@@ -221,8 +227,8 @@ function setupWorkShowcase() {
     syncAutoplay(true);
   }
 
-  const onPrevious = () => goTo(index - 1);
-  const onNext = () => goTo(index + 1);
+  const onPrevious = (event) => { event.stopPropagation(); goTo(index - 1); };
+  const onNext = (event) => { event.stopPropagation(); goTo(index + 1); };
   const onStop = (event) => goTo(Number(event.currentTarget.dataset.workIndex));
   const onKeydown = (event) => {
     if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(index - 1); }
@@ -230,40 +236,51 @@ function setupWorkShowcase() {
   };
   const onPointerDown = (event) => {
     if (!event.isPrimary || event.button > 0) return;
+    if (event.target.closest('button, a, input, textarea, select, [role="button"], [data-no-drag]')) return;
     pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    dragging = true;
-    showcase.setPointerCapture?.(event.pointerId);
-    syncAutoplay();
+    dragging = false;
+    dragIntent = false;
   };
   const onPointerMove = (event) => {
     if (!pointerStart) return;
     const deltaX = event.clientX - pointerStart.x;
     const deltaY = event.clientY - pointerStart.y;
-    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY) && event.cancelable) event.preventDefault();
+    if (!dragIntent && Math.abs(deltaX) >= 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      dragIntent = true;
+      dragging = true;
+      showcase.setPointerCapture?.(event.pointerId);
+      syncAutoplay();
+    }
+    if (dragIntent && event.cancelable) event.preventDefault();
   };
   const finishDrag = (event) => {
     if (!pointerStart) return;
     const deltaX = event.clientX - pointerStart.x;
     const deltaY = event.clientY - pointerStart.y;
     const wasHorizontal = Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY);
+    if (showcase.hasPointerCapture?.(pointerStart.id)) showcase.releasePointerCapture(pointerStart.id);
     pointerStart = undefined;
     dragging = false;
+    dragIntent = false;
     if (wasHorizontal) goTo(index + (deltaX < 0 ? 1 : -1));
     else syncAutoplay();
   };
-  const onPointerCancel = () => { pointerStart = undefined; dragging = false; syncAutoplay(); };
+  const onPointerCancel = () => { pointerStart = undefined; dragging = false; dragIntent = false; syncAutoplay(); };
   const onEnter = () => { if (hoverCapable.matches) { hoverPaused = true; syncAutoplay(); } };
   const onLeave = () => { if (hoverCapable.matches) { hoverPaused = false; syncAutoplay(); } };
   const onVisibility = () => syncAutoplay();
 
-  showcase.querySelector('[data-work-prev]').addEventListener('click', onPrevious);
-  showcase.querySelector('[data-work-next]').addEventListener('click', onNext);
+  const previousControl = showcase.querySelector('[data-work-prev]');
+  const nextControl = showcase.querySelector('[data-work-next]');
+  previousControl.addEventListener('click', onPrevious);
+  nextControl.addEventListener('click', onNext);
   stops.forEach((stop) => stop.addEventListener('click', onStop));
   showcase.addEventListener('keydown', onKeydown);
   showcase.addEventListener('pointerdown', onPointerDown);
   showcase.addEventListener('pointermove', onPointerMove);
   showcase.addEventListener('pointerup', finishDrag);
   showcase.addEventListener('pointercancel', onPointerCancel);
+  showcase.addEventListener('lostpointercapture', onPointerCancel);
   showcase.addEventListener('pointerenter', onEnter);
   showcase.addEventListener('pointerleave', onLeave);
   document.addEventListener('visibilitychange', onVisibility);
@@ -271,14 +288,15 @@ function setupWorkShowcase() {
   window.__workShowcaseCleanup = () => {
     stopAnimation();
     window.clearTimeout(transitionTimer);
-    showcase.querySelector('[data-work-prev]').removeEventListener('click', onPrevious);
-    showcase.querySelector('[data-work-next]').removeEventListener('click', onNext);
+    previousControl.removeEventListener('click', onPrevious);
+    nextControl.removeEventListener('click', onNext);
     stops.forEach((stop) => stop.removeEventListener('click', onStop));
     showcase.removeEventListener('keydown', onKeydown);
     showcase.removeEventListener('pointerdown', onPointerDown);
     showcase.removeEventListener('pointermove', onPointerMove);
     showcase.removeEventListener('pointerup', finishDrag);
     showcase.removeEventListener('pointercancel', onPointerCancel);
+    showcase.removeEventListener('lostpointercapture', onPointerCancel);
     showcase.removeEventListener('pointerenter', onEnter);
     showcase.removeEventListener('pointerleave', onLeave);
     document.removeEventListener('visibilitychange', onVisibility);
