@@ -1,0 +1,24 @@
+[Unit]
+Description=Portfolio Studio
+After=network.target
+
+[Service]
+Type=simple
+User=portfolio-studio
+Group=portfolio-studio
+WorkingDirectory=/var/www/portfolio-studio
+EnvironmentFile=/etc/portfolio-studio.env
+Environment=NODE_ENV=production
+Environment=PORT=3100
+Environment=PUBLIC_DIR=/var/www/portfolio-studio/public
+ExecStart=/usr/bin/node /var/www/portfolio-studio/server/studio-server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/portfolio-studio
+
+[Install]
+WantedBy=multi-user.target

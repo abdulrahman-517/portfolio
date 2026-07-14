@@ -11,6 +11,9 @@ const required = [
   'public/studio/projects/index.html',
   'netlify/functions/public-config.mjs',
   'netlify/functions/public-projects.mjs',
+  'server/studio-server.mjs',
+  'server/portfolio-studio.service',
+  'server/nginx-studio.conf',
   'supabase/migrations/202607140001_portfolio_studio.sql'
 ];
 
