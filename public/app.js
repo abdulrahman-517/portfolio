@@ -5,21 +5,68 @@ const SITE = {
   portfolio: 'https://portofile001.netlify.app/'
 };
 
-const PROJECTS = [
+const FALLBACK_PROJECTS = [
   { slug: 'car-dealership', title: '\u0645\u0639\u0631\u0636 \u0633\u064a\u0627\u0631\u0627\u062a', type: 'Car Dealership Platform', icon: 'car.svg', image: 'car-dealership.png', summary: 'An Arabic-first vehicle dealership experience for presenting inventory, discovery, and direct enquiries.', stack: ['React', 'Next.js', 'Tailwind CSS'], overview: 'A focused product concept for organizing vehicle inventory into a clear customer journey without losing the practical needs of dealership operations.', features: ['Vehicle inventory presentation', 'Search and filtering flows', 'Vehicle detail views', 'Direct enquiry pathways'], capabilities: ['Responsive catalogue patterns', 'Arabic RTL user experience', 'Structured inventory interfaces'], approach: 'Designed around the decisions a buyer needs to make: compare inventory, understand the details, and make contact with confidence.', limitations: 'Public source and live access are not currently published.' },
   { slug: 'vitamin-c-blog', title: 'Vitamin C Blog', type: 'Editorial Content Platform', icon: 'article.svg', image: 'vitamin-c-blog.png', summary: 'A readable editorial experience shaped for structured content, discovery, and long-form browsing.', stack: ['React', 'Next.js', 'Tailwind CSS'], overview: 'A content product direction that prioritizes an intentional reading experience and a sensible structure for articles and categories.', features: ['Article-led publishing layout', 'Content discovery structure', 'Readable long-form presentation'], capabilities: ['Editorial interface systems', 'Accessible reading patterns', 'Responsive layouts'], approach: 'The design begins with clarity: make content easy to scan, easy to read, and easy to return to.', limitations: 'Public source and live access are not currently published.' },
   { slug: 'mowasalatna', title: '\u0645\u0648\u0627\u0635\u0644\u0627\u062a\u0646\u0627', type: 'Route & Trip Status', icon: 'route.svg', image: 'mowasalatna.png', summary: 'A public transport-oriented experience for route discovery and trip-status information.', stack: ['React', 'Node.js', 'PostgreSQL'], overview: 'A service-oriented digital product built to make transportation information more approachable through a direct, Arabic-first interface.', features: ['Route discovery', 'Trip-status information', 'Service-oriented navigation'], capabilities: ['Arabic-first product UX', 'Responsive service design', 'Information hierarchy'], live: 'https://mowasalatna.com/mowasalat', approach: 'The experience keeps essential service information close to the surface, with fewer steps between a traveller and the answer they need.', limitations: 'Implementation details are intentionally kept private.' },
   { slug: 'haraj-al-dhad', title: '\u062d\u0631\u0627\u062c \u0627\u0644\u0636\u0627\u062f', type: 'Local Marketplace', icon: 'shopping-bag.svg', image: 'haraj-al-dhad.png', summary: 'A local marketplace direction centred on browsing, listings, and Arabic community commerce.', stack: ['TypeScript', 'React', 'PostgreSQL'], overview: 'A marketplace product concept that balances discoverability for visitors with clear listing pathways for sellers.', features: ['Listing-oriented browsing', 'Category-led discovery', 'Arabic marketplace flows'], capabilities: ['Marketplace UX', 'Search and browse patterns', 'RTL interface design'], approach: 'The product framing starts with familiar marketplace behaviour and turns it into a calmer, more legible browsing experience.', limitations: 'Public source and live access are not currently published.' },
-  { slug: 'q-search', title: 'Q Search', type: 'Search Tool', icon: 'search.svg', image: 'q-search.png', summary: 'An open search project with a public repository available for inspection.', stack: ['Python', 'FastAPI'], overview: 'A public search-oriented project available for inspection through its repository.', features: ['Search workflow', 'Public repository'], capabilities: ['Python services', 'FastAPI', 'Deployment'], repo: 'https://github.com/abdulrahman-517/q-search', approach: 'A compact project that keeps its public surface focused on the core search workflow.', limitations: 'The live demonstration is not currently presented publicly.' }
+  { slug: 'q-search', title: 'Q Search', type: 'Search Tool', icon: 'search.svg', image: 'q-search.png', summary: 'An open search project with a public repository available for inspection.', stack: ['Python', 'FastAPI'], overview: 'A public search-oriented project available for inspection through its repository.', features: ['Search workflow', 'Public repository'], capabilities: ['Python services', 'FastAPI', 'Deployment'], repo: 'https://github.com/abdulrahman-517/q-search', approach: 'A compact project that keeps its public surface focused on the core search workflow.', limitations: 'The live demonstration is not currently presented publicly.', visible: false }
 ];
+
+let PROJECTS = [...FALLBACK_PROJECTS];
+let WORK_PROJECTS = FALLBACK_PROJECTS.filter((project) => project.visible !== false);
 
 const icon = (name, className = '') => `<img class="icon ${className}" src="/assets/icons/${name}" alt="" aria-hidden="true">`;
 const esc = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const bySlug = (slug) => PROJECTS.find((project) => project.slug === slug);
 const isArabic = (text) => /[\u0600-\u06ff]/.test(text);
+const safeUrl = (value) => {
+  if (typeof value !== 'string' || !value) return '';
+  try {
+    const url = new URL(value, window.location.origin);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch { return ''; }
+};
+const projectIcon = (project) => {
+  const category = `${project.type || ''} ${project.slug || ''}`.toLowerCase();
+  if (category.includes('car')) return 'car.svg';
+  if (category.includes('route') || category.includes('transport')) return 'route.svg';
+  if (category.includes('market')) return 'shopping-bag.svg';
+  if (category.includes('search')) return 'search.svg';
+  return 'article.svg';
+};
+const mapManagedProject = (project) => ({
+  slug: project.slug,
+  title: project.title_en || project.title_ar || project.slug,
+  type: project.category_en || project.category_ar || 'Project',
+  icon: projectIcon({ type: project.category_en || project.category_ar, slug: project.slug }),
+  summary: project.short_description_en || project.short_description_ar || '',
+  overview: project.long_description_en || project.long_description_ar || project.short_description_en || '',
+  stack: Array.isArray(project.tech_stack) ? project.tech_stack.filter((tag) => typeof tag === 'string') : [],
+  live: safeUrl(project.project_url),
+  repo: safeUrl(project.github_url),
+  coverImage: safeUrl(project.cover_image_url),
+  features: [],
+  capabilities: [],
+  approach: project.long_description_en || project.long_description_ar || '',
+  limitations: ''
+});
+
+async function loadManagedProjects() {
+  try {
+    const response = await fetch('/.netlify/functions/public-projects', { headers: { Accept: 'application/json' } });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    if (!Array.isArray(payload.projects)) return false;
+    PROJECTS = payload.projects.map(mapManagedProject);
+    WORK_PROJECTS = [...PROJECTS];
+    return true;
+  } catch { return false; }
+}
 
 function visual(project, detail = false) {
-  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual"><div class="project-placeholder">${icon(project.icon)}<span ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span></div></div>`;
+  const preview = safeUrl(project.coverImage) ? `<img src="${esc(safeUrl(project.coverImage))}" alt="${esc(project.title)} project cover">` : '';
+  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual">${preview}<div class="project-placeholder">${icon(project.icon)}<span ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span></div></div>`;
 }
 
 function hydrateProjectImages() {
@@ -43,21 +90,23 @@ function card(project) {
   return `<article class="project-card">${visual(project)}<div class="project-card-body"><p class="project-type">${esc(project.type)}</p><h3 ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="project-summary-small">${esc(project.summary)}</p><div class="tag-list">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div><a class="text-link" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a></div></article>`;
 }
 
-const WORK_PROJECTS = PROJECTS.slice(0, 4);
 const WORK_PLACEHOLDER = '/assets/work-slider/placeholders/01-project-placeholder-arctic-4k.png';
 
 function workSlideContent(project, index) {
   const liveAction = project.live ? `<a class="button button-quiet" href="${project.live}" target="_blank" rel="noopener noreferrer">Open live ${icon('external-link.svg')}</a>` : '';
-  return `<p class="eyebrow">Selected Work</p><div class="work-showcase__meta"><span>${String(index + 1).padStart(2, '0')}</span><span aria-hidden="true">/</span><span>04</span></div><p class="work-showcase__type">${esc(project.type)}</p><h3 id="active-work-title" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="work-showcase__summary">${esc(project.summary)}</p><div class="tag-list work-showcase__tags">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div><div class="work-showcase__actions"><a class="button" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a>${liveAction}</div>`;
+  return `<p class="eyebrow">Selected Work</p><div class="work-showcase__meta"><span>${String(index + 1).padStart(2, '0')}</span><span aria-hidden="true">/</span><span>${String(WORK_PROJECTS.length).padStart(2, '0')}</span></div><p class="work-showcase__type">${esc(project.type)}</p><h3 id="active-work-title" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="work-showcase__summary">${esc(project.summary)}</p><div class="tag-list work-showcase__tags">${project.stack.map((tag) => `<span>${esc(tag)}</span>`).join('')}</div><div class="work-showcase__actions"><a class="button" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a>${liveAction}</div>`;
 }
 
 function workLaptop(project) {
-  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen"><img data-work-preview src="${WORK_PLACEHOLDER}" alt="${esc(project.title)} project preview"><span class="laptop-screen__mark" aria-hidden="true">${icon(project.icon)}</span></div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
+  const preview = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
+  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen"><img data-work-preview src="${esc(preview)}" alt="${esc(project.title)} project preview"><span class="laptop-screen__mark" aria-hidden="true">${icon(project.icon)}</span></div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
 }
 
 function workShowcase() {
   const project = WORK_PROJECTS[0];
-  return `<section class="work-showcase" id="projects" aria-labelledby="projects-title" tabindex="0" data-work-showcase data-work-index="0"><div class="work-showcase__scene" aria-hidden="true"><div class="work-showcase__backdrop"></div><div class="work-showcase__parallax"></div><div class="work-showcase__haze"></div><div class="work-showcase__particles"></div><div class="work-showcase__vignette"></div><div class="work-showcase__transition"></div></div><div class="shell work-showcase__shell"><div class="work-showcase__layout"><div class="work-showcase__panel"><div class="work-showcase__panel-frost" aria-hidden="true"></div><h2 class="sr-only" id="projects-title">Selected Work</h2><div class="work-showcase__content" data-work-content aria-live="polite">${workSlideContent(project, 0)}</div></div>${workLaptop(project)}</div><div class="work-showcase__bottom"><div class="work-progress" role="tablist" aria-label="Selected work navigation"><div class="work-progress__rail" aria-hidden="true"></div><div class="work-progress__active" aria-hidden="true"><div class="work-progress__elapsed"></div><span class="work-progress__dot"></span></div>${WORK_PROJECTS.map((item, index) => `<button type="button" class="work-progress__stop" data-work-index="${index}" role="tab" aria-label="Show ${esc(item.title)}" aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}"></button>`).join('')}</div><div class="work-showcase__controls"><button class="work-control" type="button" data-work-prev aria-label="Previous project">${icon('arrow-right.svg')}</button><button class="work-control work-control--next" type="button" data-work-next aria-label="Next project">${icon('arrow-right.svg')}</button></div></div><p class="sr-only" data-work-announcement aria-live="polite">Showing ${esc(project.title)}, project 1 of 4.</p></div></section>`;
+  if (!project) return '';
+  const count = WORK_PROJECTS.length;
+  return `<section class="work-showcase" id="projects" aria-labelledby="projects-title" tabindex="0" data-work-showcase data-work-index="0"><div class="work-showcase__scene" aria-hidden="true"><div class="work-showcase__backdrop"></div><div class="work-showcase__parallax"></div><div class="work-showcase__haze"></div><div class="work-showcase__particles"></div><div class="work-showcase__vignette"></div><div class="work-showcase__transition"></div></div><div class="shell work-showcase__shell"><div class="work-showcase__layout"><div class="work-showcase__panel"><div class="work-showcase__panel-frost" aria-hidden="true"></div><h2 class="sr-only" id="projects-title">Selected Work</h2><div class="work-showcase__content" data-work-content aria-live="polite">${workSlideContent(project, 0)}</div></div>${workLaptop(project)}</div><div class="work-showcase__bottom"><div class="work-progress" role="tablist" aria-label="Selected work navigation"><div class="work-progress__rail" aria-hidden="true"></div><div class="work-progress__active" aria-hidden="true"><div class="work-progress__elapsed"></div><span class="work-progress__dot"></span></div>${WORK_PROJECTS.map((item, index) => `<button type="button" class="work-progress__stop" style="left:${(index / count) * 100}%;width:${100 / count}%" data-work-index="${index}" role="tab" aria-label="Show ${esc(item.title)}" aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}"></button>`).join('')}</div><div class="work-showcase__controls"><button class="work-control" type="button" data-work-prev aria-label="Previous project">${icon('arrow-right.svg')}</button><button class="work-control work-control--next" type="button" data-work-next aria-label="Next project">${icon('arrow-right.svg')}</button></div></div><p class="sr-only" data-work-announcement aria-live="polite">Showing ${esc(project.title)}, project 1 of ${count}.</p></div></section>`;
 }
 
 function capability(iconName, title, description, tags) {
@@ -89,16 +138,22 @@ function setupNavigation() {
 }
 
 function setupWorkShowcase() {
+  window.__workShowcaseCleanup?.();
   const showcase = document.querySelector('[data-work-showcase]');
-  if (!showcase) return;
+  if (!showcase || !WORK_PROJECTS.length) return;
 
   const content = showcase.querySelector('[data-work-content]');
   const announcement = showcase.querySelector('[data-work-announcement]');
   const stops = [...showcase.querySelectorAll('[data-work-index]')];
+  const activeSegment = showcase.querySelector('.work-progress__active');
+  const elapsed = showcase.querySelector('.work-progress__elapsed');
   const hoverCapable = window.matchMedia('(hover: hover)');
+  const duration = 6000;
   let index = 0;
-  let timer;
   let transitionTimer;
+  let animationFrame;
+  let lastTimestamp = 0;
+  let progress = 0;
   let dragging = false;
   let hoverPaused = false;
   let pointerStart;
@@ -106,31 +161,49 @@ function setupWorkShowcase() {
   const normalize = (value) => (value + WORK_PROJECTS.length) % WORK_PROJECTS.length;
   const canAutoplay = () => !document.hidden && !dragging && !hoverPaused;
 
-  function resetProgress(playing) {
-    showcase.classList.remove('is-playing');
-    if (playing) {
-      void showcase.offsetWidth;
-      showcase.classList.add('is-playing');
-    }
+  function setProgress(value) {
+    progress = Math.max(0, Math.min(1, value));
+    elapsed.style.transform = `scaleX(${progress})`;
   }
 
-  function restartAutoplay() {
-    window.clearTimeout(timer);
-    const shouldPlay = canAutoplay();
-    resetProgress(shouldPlay);
-    if (shouldPlay) timer = window.setTimeout(() => goTo(index + 1, false), 6000);
+  function stopAnimation() {
+    window.cancelAnimationFrame(animationFrame);
+    animationFrame = undefined;
+    lastTimestamp = 0;
+  }
+
+  function tick(timestamp) {
+    if (!canAutoplay()) return stopAnimation();
+    if (!lastTimestamp) lastTimestamp = timestamp;
+    progress += (timestamp - lastTimestamp) / duration;
+    lastTimestamp = timestamp;
+    if (progress >= 1) {
+      index = normalize(index + 1);
+      render(index);
+      progress = 0;
+      lastTimestamp = timestamp;
+    }
+    setProgress(progress);
+    animationFrame = window.requestAnimationFrame(tick);
+  }
+
+  function syncAutoplay(reset = false) {
+    stopAnimation();
+    if (reset) setProgress(0);
+    if (canAutoplay()) animationFrame = window.requestAnimationFrame(tick);
   }
 
   function render(nextIndex) {
     const project = WORK_PROJECTS[nextIndex];
     showcase.dataset.workIndex = String(nextIndex);
-    showcase.style.setProperty('--work-index', String(nextIndex));
     content.innerHTML = workSlideContent(project, nextIndex);
     const preview = showcase.querySelector('[data-work-preview]');
-    preview.src = WORK_PLACEHOLDER;
+    preview.src = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
     preview.alt = `${project.title} project preview`;
     showcase.querySelector('.laptop-screen__mark').innerHTML = icon(project.icon);
     announcement.textContent = `Showing ${project.title}, project ${nextIndex + 1} of ${WORK_PROJECTS.length}.`;
+    activeSegment.style.width = `${100 / WORK_PROJECTS.length}%`;
+    activeSegment.style.transform = `translateX(${nextIndex * 100}%)`;
     stops.forEach((stop, stopIndex) => {
       const active = stopIndex === nextIndex;
       stop.setAttribute('aria-selected', String(active));
@@ -138,40 +211,36 @@ function setupWorkShowcase() {
     });
   }
 
-  function goTo(nextIndex, manual = true) {
+  function goTo(nextIndex) {
     const target = normalize(nextIndex);
     if (transitionTimer) window.clearTimeout(transitionTimer);
-    window.clearTimeout(timer);
     index = target;
-    showcase.classList.remove('is-playing');
     showcase.classList.add('is-transitioning');
     render(index);
     transitionTimer = window.setTimeout(() => showcase.classList.remove('is-transitioning'), 760);
-    restartAutoplay();
+    syncAutoplay(true);
   }
 
-  showcase.querySelector('[data-work-prev]').addEventListener('click', () => goTo(index - 1));
-  showcase.querySelector('[data-work-next]').addEventListener('click', () => goTo(index + 1));
-  stops.forEach((stop) => stop.addEventListener('click', () => goTo(Number(stop.dataset.workIndex))));
-
-  showcase.addEventListener('keydown', (event) => {
+  const onPrevious = () => goTo(index - 1);
+  const onNext = () => goTo(index + 1);
+  const onStop = (event) => goTo(Number(event.currentTarget.dataset.workIndex));
+  const onKeydown = (event) => {
     if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(index - 1); }
     if (event.key === 'ArrowRight') { event.preventDefault(); goTo(index + 1); }
-  });
-
-  showcase.addEventListener('pointerdown', (event) => {
+  };
+  const onPointerDown = (event) => {
     if (!event.isPrimary || event.button > 0) return;
     pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
     dragging = true;
     showcase.setPointerCapture?.(event.pointerId);
-    restartAutoplay();
-  });
-  showcase.addEventListener('pointermove', (event) => {
+    syncAutoplay();
+  };
+  const onPointerMove = (event) => {
     if (!pointerStart) return;
     const deltaX = event.clientX - pointerStart.x;
     const deltaY = event.clientY - pointerStart.y;
     if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY) && event.cancelable) event.preventDefault();
-  });
+  };
   const finishDrag = (event) => {
     if (!pointerStart) return;
     const deltaX = event.clientX - pointerStart.x;
@@ -180,21 +249,52 @@ function setupWorkShowcase() {
     pointerStart = undefined;
     dragging = false;
     if (wasHorizontal) goTo(index + (deltaX < 0 ? 1 : -1));
-    else restartAutoplay();
+    else syncAutoplay();
   };
-  showcase.addEventListener('pointerup', finishDrag);
-  showcase.addEventListener('pointercancel', () => { pointerStart = undefined; dragging = false; restartAutoplay(); });
+  const onPointerCancel = () => { pointerStart = undefined; dragging = false; syncAutoplay(); };
+  const onEnter = () => { if (hoverCapable.matches) { hoverPaused = true; syncAutoplay(); } };
+  const onLeave = () => { if (hoverCapable.matches) { hoverPaused = false; syncAutoplay(); } };
+  const onVisibility = () => syncAutoplay();
 
-  showcase.addEventListener('pointerenter', () => { if (hoverCapable.matches) { hoverPaused = true; restartAutoplay(); } });
-  showcase.addEventListener('pointerleave', () => { if (hoverCapable.matches) { hoverPaused = false; restartAutoplay(); } });
-  document.addEventListener('visibilitychange', () => restartAutoplay());
+  showcase.querySelector('[data-work-prev]').addEventListener('click', onPrevious);
+  showcase.querySelector('[data-work-next]').addEventListener('click', onNext);
+  stops.forEach((stop) => stop.addEventListener('click', onStop));
+  showcase.addEventListener('keydown', onKeydown);
+  showcase.addEventListener('pointerdown', onPointerDown);
+  showcase.addEventListener('pointermove', onPointerMove);
+  showcase.addEventListener('pointerup', finishDrag);
+  showcase.addEventListener('pointercancel', onPointerCancel);
+  showcase.addEventListener('pointerenter', onEnter);
+  showcase.addEventListener('pointerleave', onLeave);
+  document.addEventListener('visibilitychange', onVisibility);
+
+  window.__workShowcaseCleanup = () => {
+    stopAnimation();
+    window.clearTimeout(transitionTimer);
+    showcase.querySelector('[data-work-prev]').removeEventListener('click', onPrevious);
+    showcase.querySelector('[data-work-next]').removeEventListener('click', onNext);
+    stops.forEach((stop) => stop.removeEventListener('click', onStop));
+    showcase.removeEventListener('keydown', onKeydown);
+    showcase.removeEventListener('pointerdown', onPointerDown);
+    showcase.removeEventListener('pointermove', onPointerMove);
+    showcase.removeEventListener('pointerup', finishDrag);
+    showcase.removeEventListener('pointercancel', onPointerCancel);
+    showcase.removeEventListener('pointerenter', onEnter);
+    showcase.removeEventListener('pointerleave', onLeave);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
 
   render(index);
-  restartAutoplay();
+  syncAutoplay(true);
 }
 
 const app = document.querySelector('#app');
-app.innerHTML = document.body.dataset.page === 'project' ? projectPage(bySlug(document.body.dataset.project)) : homePage();
-setupNavigation();
-hydrateProjectImages();
-setupWorkShowcase();
+function renderCurrentPage() {
+  app.innerHTML = document.body.dataset.page === 'project' ? projectPage(bySlug(document.body.dataset.project)) : homePage();
+  setupNavigation();
+  hydrateProjectImages();
+  setupWorkShowcase();
+}
+
+renderCurrentPage();
+loadManagedProjects().then((loaded) => { if (loaded) renderCurrentPage(); });
