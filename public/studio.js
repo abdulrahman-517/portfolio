@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '/supabase-client.js?v=20260714';
+import { getSupabaseClient } from '/supabase-client.js?v=20260715';
 
 const ADMIN_EMAIL = 'abdulrahmanalmushajari@gmail.com';
 const app = document.querySelector('#studio-app');
