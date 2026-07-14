@@ -43,6 +43,18 @@ function card(project) {
   return `<article class="project-card">${visual(project)}<div class="project-card-body"><p class="project-type">${esc(project.type)}</p><h3 ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="project-summary-small">${esc(project.summary)}</p><div class="tag-list">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div><a class="text-link" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a></div></article>`;
 }
 
+const WORK_PROJECTS = PROJECTS.slice(0, 4).map((project, index) => ({ ...project, side: index === 1 || index === 3 ? 'right' : 'left' }));
+
+function workSlideContent(project, index) {
+  const liveAction = project.live ? `<a class="button button-quiet" href="${project.live}" target="_blank" rel="noreferrer">Open live ${icon('external-link.svg')}</a>` : '';
+  return `<div class="work-showcase__content-intro"><p class="eyebrow">Selected Work</p><div class="work-showcase__meta"><span>Project ${String(index + 1).padStart(2, '0')}</span><span aria-hidden="true">/</span><span>04</span></div></div><p class="work-showcase__type">${esc(project.type)}</p><h3 id="active-work-title" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="work-showcase__summary">${esc(project.summary)}</p><div class="tag-list work-showcase__tags">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div><div class="work-showcase__actions"><a class="button" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a>${liveAction}</div>`;
+}
+
+function workShowcase() {
+  const project = WORK_PROJECTS[0];
+  return `<section class="work-showcase" id="projects" aria-labelledby="projects-title" tabindex="0" data-work-showcase data-work-index="0" data-work-side="${project.side}"><div class="work-showcase__scene" aria-hidden="true"><div class="work-showcase__backdrop"></div><div class="work-showcase__parallax"></div><div class="work-showcase__haze"></div><div class="work-showcase__particles"></div><div class="work-showcase__vignette"></div><div class="work-showcase__transition"></div></div><div class="shell work-showcase__shell"><div class="work-showcase__layout"><div class="work-showcase__panel"><div class="work-showcase__panel-frost" aria-hidden="true"></div><h2 class="work-showcase__section-title" id="projects-title">Selected Work</h2><div class="work-showcase__content" data-work-content aria-live="polite">${workSlideContent(project, 0)}</div></div><div class="work-showcase__identity" aria-hidden="true"><div>${icon(project.icon)}<span ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span></div></div></div><div class="work-showcase__bottom"><div class="work-progress" role="tablist" aria-label="Selected work navigation"><div class="work-progress__rail" aria-hidden="true"></div><div class="work-progress__active" aria-hidden="true"><div class="work-progress__elapsed"></div><span class="work-progress__dot"></span></div>${WORK_PROJECTS.map((item, index) => `<button type="button" class="work-progress__stop" data-work-index="${index}" role="tab" aria-label="Show ${esc(item.title)}" aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}"></button>`).join('')}</div><div class="work-showcase__controls"><button class="work-control" type="button" data-work-prev aria-label="Previous project">${icon('arrow-right.svg')}</button><button class="work-control work-control--next" type="button" data-work-next aria-label="Next project">${icon('arrow-right.svg')}</button></div></div><p class="sr-only" data-work-announcement aria-live="polite">Showing ${esc(project.title)}, project 1 of 4.</p></div></section>`;
+}
+
 function capability(iconName, title, description, tags) {
   return `<article class="capability"><div class="capability-icon">${icon(iconName)}</div><h3>${title}</h3><p>${description}</p><div class="tag-list">${tags.map((tag) => `<span>${tag}</span>`).join('')}</div></article>`;
 }
@@ -50,8 +62,8 @@ function capability(iconName, title, description, tags) {
 function homePage() {
   return `${header()}<main>
     <section class="hero" aria-labelledby="hero-title"><div class="shell hero-content"><div class="hero-copy"><p class="eyebrow">Full-Stack Developer &amp; Digital Product Builder</p><h1 id="hero-title">Abdulrahman<br><span>Al-Mushajari</span></h1><p class="hero-intro">I build practical digital products, dashboards, and SaaS platforms with Arabic-first experiences that solve real problems.</p><div class="hero-actions"><a class="button" href="#projects">View Projects ${icon('arrow-right.svg')}</a><a class="button button-quiet" href="#contact">${icon('mail.svg')} Contact Me</a></div></div><div class="info-strip" aria-label="Professional information"><div class="info-grid"><div class="info-item">${icon('map-pin.svg')}<div><span>Based in</span><strong>Yemen</strong></div></div><div class="info-item">${icon('layers.svg')}<div><span>Available for</span><strong>Freelance Projects</strong></div></div><div class="info-item">${icon('mail.svg')}<div><span>Email</span><a href="mailto:${SITE.email}">${SITE.email}</a></div></div><div class="info-item">${icon('globe.svg')}<div><span>Portfolio</span><a href="${SITE.portfolio}">portofile001.netlify.app</a></div></div></div></div></div></section>
-    <section class="section projects-section" id="projects" aria-labelledby="projects-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Featured projects</p><h2 id="projects-title">Products I've built</h2><p>Real projects shaped around clear journeys, useful systems, and Arabic-first experiences.</p></div><div class="project-grid">${PROJECTS.slice(0, 4).map(card).join('')}</div></div></section>
-    <div class="iceberg-divider" aria-hidden="true"></div>
+    ${workShowcase()}
+    <div class="section-glow-line" aria-hidden="true"></div>
     <section class="section about-section" id="about" aria-labelledby="about-title"><div class="shell about-grid"><div class="about-copy"><p class="eyebrow">About me</p><h2 id="about-title">Building Solutions That Matter</h2><p>I turn complex problems into simple, usable digital products. From idea to deployment, I focus on performance, scalability, and great user experiences.</p><p>I work with modern technologies to build products that help businesses and communities grow.</p><a class="text-link" href="#contact">More about me ${icon('arrow-right.svg')}</a></div><div class="about-image" aria-hidden="true"></div></div></section>
     <section class="section approach-section" id="approach" aria-labelledby="approach-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Development approach</p><h2 id="approach-title">How I build products</h2></div><ol class="approach-list"><li><span>01</span><div><h3>Discover</h3><p>Understand the problem and the people behind it.</p></div></li><li><span>02</span><div><h3>Design</h3><p>Plan the experience and structure.</p></div></li><li><span>03</span><div><h3>Develop</h3><p>Build clean, maintainable systems.</p></div></li><li><span>04</span><div><h3>Validate</h3><p>Test and refine the important details.</p></div></li><li><span>05</span><div><h3>Deploy</h3><p>Release, monitor, and improve.</p></div></li></ol></div></section>
     <section class="section capabilities-section" id="capabilities" aria-labelledby="capabilities-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Technical capabilities</p><h2 id="capabilities-title">Technologies I work with</h2></div><div class="capability-grid">${capability('code.svg', 'Frontend', 'Responsive interfaces, design systems, dashboards, accessibility, and Arabic RTL UX.', ['JavaScript', 'TypeScript', 'React', 'Next.js'])}${capability('cloud.svg', 'Backend', 'APIs, authentication, business logic, validation, and integrations.', ['Node.js', 'Python', 'FastAPI'])}${capability('database.svg', 'Database & Auth', 'Data storage and managed authentication for product foundations.', ['Supabase', 'PostgreSQL'])}${capability('layers.svg', 'DevOps & Tools', 'Reliable deployment and ongoing application operations.', ['Ubuntu', 'Nginx', 'PM2', 'Vercel', 'Render'])}</div></div></section>
@@ -71,7 +83,119 @@ function setupNavigation() {
   button.addEventListener('click', () => setOpen(!document.body.classList.contains('nav-open'))); nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setOpen(false))); document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setOpen(false); });
 }
 
+function setupWorkShowcase() {
+  const showcase = document.querySelector('[data-work-showcase]');
+  if (!showcase) return;
+
+  const content = showcase.querySelector('[data-work-content]');
+  const announcement = showcase.querySelector('[data-work-announcement]');
+  const stops = [...showcase.querySelectorAll('[data-work-index]')];
+  const identity = showcase.querySelector('.work-showcase__identity div');
+  const hoverCapable = window.matchMedia('(hover: hover)');
+  let index = 0;
+  let timer;
+  let transitionTimer;
+  let dragging = false;
+  let hoverPaused = false;
+  let pointerStart;
+
+  const normalize = (value) => (value + WORK_PROJECTS.length) % WORK_PROJECTS.length;
+  const canAutoplay = () => !document.hidden && !dragging && !hoverPaused;
+
+  function preloadNext(indexToLoad) {
+    const side = WORK_PROJECTS[normalize(indexToLoad)].side;
+    const image = new Image();
+    image.src = `/assets/work-slider/backgrounds/${side === 'right' ? '03-work-slider-right-content-4k.png' : '02-work-slider-left-content-4k.png'}`;
+  }
+
+  function resetProgress(playing) {
+    showcase.classList.remove('is-playing');
+    if (playing) {
+      void showcase.offsetWidth;
+      showcase.classList.add('is-playing');
+    }
+  }
+
+  function restartAutoplay() {
+    window.clearTimeout(timer);
+    const shouldPlay = canAutoplay();
+    resetProgress(shouldPlay);
+    if (shouldPlay) timer = window.setTimeout(() => goTo(index + 1, false), 6000);
+  }
+
+  function render(nextIndex) {
+    const project = WORK_PROJECTS[nextIndex];
+    showcase.dataset.workIndex = String(nextIndex);
+    showcase.dataset.workSide = project.side;
+    showcase.style.setProperty('--work-index', String(nextIndex));
+    content.innerHTML = workSlideContent(project, nextIndex);
+    identity.innerHTML = `${icon(project.icon)}<span ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span>`;
+    announcement.textContent = `Showing ${project.title}, project ${nextIndex + 1} of ${WORK_PROJECTS.length}.`;
+    stops.forEach((stop, stopIndex) => {
+      const active = stopIndex === nextIndex;
+      stop.setAttribute('aria-selected', String(active));
+      stop.setAttribute('tabindex', active ? '0' : '-1');
+    });
+    preloadNext(nextIndex + 1);
+  }
+
+  function goTo(nextIndex, manual = true) {
+    const target = normalize(nextIndex);
+    if (transitionTimer) window.clearTimeout(transitionTimer);
+    window.clearTimeout(timer);
+    index = target;
+    showcase.classList.remove('is-playing');
+    showcase.classList.add('is-transitioning');
+    render(index);
+    transitionTimer = window.setTimeout(() => showcase.classList.remove('is-transitioning'), 760);
+    restartAutoplay();
+  }
+
+  showcase.querySelector('[data-work-prev]').addEventListener('click', () => goTo(index - 1));
+  showcase.querySelector('[data-work-next]').addEventListener('click', () => goTo(index + 1));
+  stops.forEach((stop) => stop.addEventListener('click', () => goTo(Number(stop.dataset.workIndex))));
+
+  showcase.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(index - 1); }
+    if (event.key === 'ArrowRight') { event.preventDefault(); goTo(index + 1); }
+  });
+
+  showcase.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary || event.button > 0) return;
+    pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    dragging = true;
+    showcase.setPointerCapture?.(event.pointerId);
+    restartAutoplay();
+  });
+  showcase.addEventListener('pointermove', (event) => {
+    if (!pointerStart) return;
+    const deltaX = event.clientX - pointerStart.x;
+    const deltaY = event.clientY - pointerStart.y;
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY) && event.cancelable) event.preventDefault();
+  });
+  const finishDrag = (event) => {
+    if (!pointerStart) return;
+    const deltaX = event.clientX - pointerStart.x;
+    const deltaY = event.clientY - pointerStart.y;
+    const wasHorizontal = Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY);
+    pointerStart = undefined;
+    dragging = false;
+    if (wasHorizontal) goTo(index + (deltaX < 0 ? 1 : -1));
+    else restartAutoplay();
+  };
+  showcase.addEventListener('pointerup', finishDrag);
+  showcase.addEventListener('pointercancel', () => { pointerStart = undefined; dragging = false; restartAutoplay(); });
+
+  showcase.addEventListener('pointerenter', () => { if (hoverCapable.matches) { hoverPaused = true; restartAutoplay(); } });
+  showcase.addEventListener('pointerleave', () => { if (hoverCapable.matches) { hoverPaused = false; restartAutoplay(); } });
+  document.addEventListener('visibilitychange', () => restartAutoplay());
+
+  render(index);
+  restartAutoplay();
+}
+
 const app = document.querySelector('#app');
 app.innerHTML = document.body.dataset.page === 'project' ? projectPage(bySlug(document.body.dataset.project)) : homePage();
 setupNavigation();
 hydrateProjectImages();
+setupWorkShowcase();
