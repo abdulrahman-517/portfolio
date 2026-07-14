@@ -9,18 +9,16 @@ const required = [
   'public/studio/index.html',
   'public/studio/login/index.html',
   'public/studio/projects/index.html',
-  'netlify/functions/public-config.mjs',
-  'netlify/functions/public-projects.mjs',
   'server/studio-server.mjs',
   'server/portfolio-studio.service',
   'server/nginx-studio.conf',
-  'supabase/migrations/202607140001_portfolio_studio.sql'
+  'server/migrations/001_portfolio_studio.sql'
 ];
 
 for (const file of required) await stat(resolve(root, file));
 
 const publicFiles = await Promise.all(['public/app.js', 'public/studio.js', 'public/supabase-client.js'].map((file) => readFile(resolve(root, file), 'utf8')));
-if (publicFiles.some((source) => source.includes('SUPABASE_SERVICE_ROLE_KEY'))) throw new Error('A server-only key reference was found in public source.');
+if (publicFiles.some((source) => /SUPABASE_SERVICE_ROLE_KEY|service_role/i.test(source))) throw new Error('A server-only key reference was found in public source.');
 if (publicFiles.some((source) => /javascript:void\(0\)|href=["']#["']/.test(source))) throw new Error('A placeholder public action was found.');
 
 console.log('Production static checks passed.');

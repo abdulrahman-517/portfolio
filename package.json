@@ -2,8 +2,11 @@
   "name": "abdulrahman-portfolio",
   "private": true,
   "version": "1.0.0",
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
   "scripts": {
-    "check": "node --check public/app.js && node --check public/studio.js && node --check public/supabase-client.js && node --check netlify/functions/public-config.mjs && node --check netlify/functions/public-projects.mjs",
+    "check": "node --check public/app.js && node --check public/studio.js && node --check public/supabase-client.js && node --check server/studio-server.mjs",
     "test": "node --test tests/*.test.mjs",
     "build": "node scripts/verify-build.mjs",
     "studio:server": "node server/studio-server.mjs"

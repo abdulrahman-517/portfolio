@@ -1,42 +1,52 @@
 import { createReadStream, existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
+import pg from 'pg';
 
 const port = Number(process.env.PORT || 3100);
 const publicDir = resolve(process.env.PUBLIC_DIR || join(process.cwd(), 'public'));
-const mimeTypes = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.avif': 'image/avif', '.ico': 'image/x-icon', '.xml': 'application/xml; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2' };
+const mediaDir = resolve(process.env.MEDIA_DIR || join(process.cwd(), 'media'));
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adminEmail = (process.env.STUDIO_ADMIN_EMAIL || 'abdulrahmanalmushajari@gmail.com').toLowerCase();
+const secret = process.env.STUDIO_SESSION_SECRET;
+if (!process.env.DATABASE_URL || !secret) throw new Error('DATABASE_URL and STUDIO_SESSION_SECRET are required.');
+const allowedOrigins = new Set(['https://studio.bonyatech.com', 'https://portofile001.netlify.app']);
+const mime = { '.css':'text/css; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.avif':'image/avif','.ico':'image/x-icon','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8' };
+const imageTypes = new Set(['image/jpeg','image/png','image/webp','image/avif']);
+const projectColumns = ['slug','title_en','title_ar','category_en','category_ar','short_description_en','short_description_ar','long_description_en','long_description_ar','tech_stack','project_url','github_url','cover_image_url','cover_image_path','gallery_images','status','featured','visible','sort_order'];
 
-function sendJson(response, status, body) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-  response.end(JSON.stringify(body));
+const json = (res, status, body, headers = {}) => { res.writeHead(status,{ 'Content-Type':'application/json; charset=utf-8','X-Content-Type-Options':'nosniff',...headers }); res.end(JSON.stringify(body)); };
+const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map(v=>v.trim().split('=').map(decodeURIComponent)).filter(v=>v.length===2));
+const sign = (payload) => createHmac('sha256',secret).update(payload).digest('base64url');
+const sessionFor = (email) => { const payload = Buffer.from(JSON.stringify({email,exp:Date.now()+43200000})).toString('base64url'); return `${payload}.${sign(payload)}`; };
+const currentUser = (req) => { try { const [payload,signature]=String(cookies(req).studio_session||'').split('.'); if (!payload || !signature || !timingSafeEqual(Buffer.from(signature),Buffer.from(sign(payload)))) return null; const data=JSON.parse(Buffer.from(payload,'base64url')); return data.exp>Date.now() && data.email===adminEmail ? {email:data.email} : null; } catch { return null; } };
+const safePath = (value) => typeof value==='string' && /^projects\/[a-zA-Z0-9._-]+$/.test(value) ? value : null;
+const mediaUrl = (path, isPublic=false) => path ? `${isPublic?'/media-public/':'/media/'}${encodeURIComponent(path).replace(/%2F/g,'/')}` : null;
+const mapProject = (project, isPublic=false) => ({...project,cover_image_url:project.cover_image_url || mediaUrl(project.cover_image_path,isPublic),gallery_images:(project.gallery_images||[]).map(path=>mediaUrl(path,isPublic))});
+const validUrl = (value) => { if (!value) return true; try { return ['http:','https:'].includes(new URL(value).protocol); } catch { return false; } };
+
+async function body(req, max=10*1024*1024) { const chunks=[]; let length=0; for await (const chunk of req) { length+=chunk.length; if(length>max) throw new Error('Payload too large.'); chunks.push(chunk); } return Buffer.concat(chunks); }
+async function authorized(req,res) { const user=currentUser(req); if(!user) { json(res,401,{error:'Authentication required.'}); return null; } if (['POST','PATCH','PUT','DELETE'].includes(req.method) && req.headers.origin && !allowedOrigins.has(req.headers.origin)) { json(res,403,{error:'Invalid request origin.'}); return null; } return user; }
+async function serve(res,file) { try { const info=await stat(file); if(!info.isFile()) return false; const extension=extname(file); const cache=['.html','.js','.css'].includes(extension)?'no-cache':'public, max-age=3600'; res.writeHead(200,{'Content-Type':mime[extension]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':cache}); createReadStream(file).pipe(res); return true; } catch{return false;} }
+function projectPayload(raw) { const data={}; for(const key of projectColumns) if(key in raw) data[key]=raw[key]; data.slug=String(data.slug||'').trim().toLowerCase(); if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.slug)) throw new Error('Invalid slug.'); if(!data.title_en||!data.title_ar||!data.category_en||!data.category_ar||!data.short_description_en||!data.short_description_ar) throw new Error('Required project fields are missing.'); if (String(data.cover_image_url||'').startsWith('/media/')) data.cover_image_url=null; if(!validUrl(data.project_url)||!validUrl(data.github_url)||!validUrl(data.cover_image_url)) throw new Error('Project URLs must use http or https.'); data.tech_stack=Array.isArray(data.tech_stack)?data.tech_stack:[]; data.gallery_images=Array.isArray(data.gallery_images)?data.gallery_images.filter(safePath):[]; data.cover_image_path=safePath(data.cover_image_path); data.status=['draft','published','private','development','archived'].includes(data.status)?data.status:'draft'; data.visible=Boolean(data.visible); data.featured=Boolean(data.featured); data.sort_order=Number.isInteger(Number(data.sort_order))?Number(data.sort_order):0; return data; }
+async function api(req,res,url) {
+  const path=url.pathname;
+  if(path==='/api/auth/session') return json(res,200,{user:currentUser(req)});
+  if(path==='/api/auth/logout' && req.method==='POST') return json(res,200,{ok:true},{'Set-Cookie':'studio_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0'});
+  if(path==='/api/auth/login' && req.method==='POST') { const data=JSON.parse((await body(req,8192)).toString()); const result=await pool.query('select password_hash from studio_users where email=$1',[String(data.email||'').toLowerCase()]); const [salt,hash]=(result.rows[0]?.password_hash||':').split(':'); const candidate=salt?scryptSync(String(data.password||''),salt,64).toString('hex'):''; if(!hash||!timingSafeEqual(Buffer.from(candidate||'0'),Buffer.from(hash))) return json(res,401,{error:'Invalid email or password.'}); return json(res,200,{user:{email:adminEmail}},{'Set-Cookie':`studio_session=${sessionFor(adminEmail)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200`}); }
+  if(path==='/api/public/projects' && req.method==='GET') { const rows=await pool.query(`select ${projectColumns.join(',')} from projects where status='published' and visible=true order by sort_order asc`); return json(res,200,{projects:rows.rows.map(row=>mapProject(row,true))},{'Access-Control-Allow-Origin':'https://portofile001.netlify.app','Cache-Control':'public, max-age=60'}); }
+  if(path==='/api/projects' && req.method==='GET') { if(!await authorized(req,res))return; const rows=await pool.query('select * from projects order by sort_order asc'); return json(res,200,{projects:rows.rows.map(row=>mapProject(row))}); }
+  if(path==='/api/projects' && req.method==='POST') { if(!await authorized(req,res))return; try { const data=projectPayload(JSON.parse((await body(req)).toString())); const keys=Object.keys(data); const values=keys.map(k=>data[k]); const row=await pool.query(`insert into projects (${keys.join(',')}) values (${keys.map((_,i)=>`$${i+1}`).join(',')}) returning *`,values); return json(res,201,{project:mapProject(row.rows[0])}); } catch(error){return json(res,400,{error:error.message});} }
+  const projectMatch=path.match(/^\/api\/projects\/([a-f0-9-]+)$/i);
+  if(projectMatch && req.method==='PATCH') { if(!await authorized(req,res))return; try { const data=projectPayload(JSON.parse((await body(req)).toString())); const keys=Object.keys(data); const values=keys.map(k=>data[k]); values.push(projectMatch[1]); const row=await pool.query(`update projects set ${keys.map((k,i)=>`${k}=$${i+1}`).join(',')} where id=$${values.length} returning *`,values); if(!row.rows[0]) return json(res,404,{error:'Project not found.'}); return json(res,200,{project:mapProject(row.rows[0])}); } catch(error){return json(res,400,{error:error.message});} }
+  if(path==='/api/media' && req.method==='PUT') { if(!await authorized(req,res))return; const filePath=safePath(url.searchParams.get('path')); if(!filePath||!imageTypes.has(req.headers['content-type']||'')) return json(res,400,{error:'Invalid image upload.'}); try { const bytes=await body(req); await mkdir(resolve(mediaDir,'projects'),{recursive:true}); const target=resolve(mediaDir,filePath); if(!target.startsWith(mediaDir)||existsSync(target)) return json(res,409,{error:'Image path already exists.'}); await writeFile(target,bytes,{flag:'wx'}); return json(res,201,{path:filePath}); } catch(error){return json(res,400,{error:error.message});} }
+  if(path.startsWith('/media/')) { if(!await authorized(req,res))return; const target=resolve(mediaDir,decodeURIComponent(path.slice(7))); if(await serve(res,target)) return; return json(res,404,{error:'Image not found.'}); }
+  if(path.startsWith('/media-public/')) { const filePath=safePath(decodeURIComponent(path.slice(14))); if(!filePath)return json(res,404,{error:'Image not found.'}); const result=await pool.query("select 1 from projects where status='published' and visible=true and (cover_image_path=$1 or gallery_images ? $1) limit 1",[filePath]); if(!result.rows[0])return json(res,404,{error:'Image not found.'}); if(await serve(res,resolve(mediaDir,filePath))) return; return json(res,404,{error:'Image not found.'}); }
+  return false;
 }
 
-async function serveFile(response, filename) {
-  try {
-    const file = await stat(filename);
-    if (!file.isFile()) return false;
-    response.writeHead(200, { 'Content-Type': mimeTypes[extname(filename).toLowerCase()] || 'application/octet-stream', 'Cache-Control': extname(filename) === '.html' ? 'no-cache' : 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' });
-    createReadStream(filename).pipe(response);
-    return true;
-  } catch { return false; }
-}
-
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
-  if (request.method !== 'GET' && request.method !== 'HEAD') return sendJson(response, 405, { error: 'Method not allowed.' });
-  if (url.pathname === '/.netlify/functions/public-config') {
-    const urlValue = process.env.SUPABASE_URL;
-    const anonKey = process.env.SUPABASE_ANON_KEY;
-    return urlValue && anonKey ? sendJson(response, 200, { url: urlValue, anonKey }) : sendJson(response, 503, { error: 'Studio is not configured.' });
-  }
-
-  const pathname = decodeURIComponent(url.pathname);
-  const candidate = normalize(join(publicDir, pathname === '/' ? 'studio/index.html' : pathname));
-  if (!candidate.startsWith(publicDir)) return sendJson(response, 403, { error: 'Forbidden.' });
-  if (existsSync(candidate) && await serveFile(response, candidate)) return;
-  if (pathname.startsWith('/studio')) return serveFile(response, join(publicDir, 'studio', 'index.html'));
-  return serveFile(response, join(publicDir, 'studio', 'index.html')) || sendJson(response, 404, { error: 'Not found.' });
-});
-
-server.listen(port, '127.0.0.1', () => console.log(`Portfolio Studio listening on ${port}`));
+const server=createServer(async(req,res)=>{ try { const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`); if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/media')) { const handled=await api(req,res,url); if(handled!==false)return; } const pathname=decodeURIComponent(url.pathname); const candidate=normalize(join(publicDir,pathname==='/'?'studio/index.html':pathname)); if(candidate.startsWith(publicDir)&&existsSync(candidate)&&await serve(res,candidate))return; if(pathname.startsWith('/studio'))return void await serve(res,join(publicDir,'studio','index.html')); await serve(res,join(publicDir,'studio','index.html')); } catch(error){ json(res,500,{error:'Server error.'}); } });
+await mkdir(mediaDir,{recursive:true});
+server.listen(port,'127.0.0.1',()=>console.log(`Portfolio Studio listening on ${port}`));
