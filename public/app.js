@@ -66,8 +66,11 @@ async function loadManagedProjects() {
 }
 
 function visual(project, detail = false) {
-  const preview = safeUrl(project.coverImage) ? `<img src="${esc(safeUrl(project.coverImage))}" alt="${esc(project.title)} project cover">` : '';
-  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual">${preview}<div class="project-placeholder">${icon(project.icon)}<span ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span></div></div>`;
+  const previewUrl = safeUrl(project.coverImage);
+  const media = previewUrl
+    ? `<img src="${esc(previewUrl)}" alt="${esc(project.title)} project cover">`
+    : `<span class="project-placeholder" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span>`;
+  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual"><div class="project-media-frame${previewUrl ? ' has-project-image' : ''}">${media}</div></div>`;
 }
 
 function hydrateProjectImages() {
@@ -100,7 +103,7 @@ function workSlideContent(project, index) {
 
 function workLaptop(project) {
   const preview = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
-  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen"><img data-work-preview src="${esc(preview)}" alt="${esc(project.title)} project preview"><span class="laptop-screen__mark" aria-hidden="true">${icon(project.icon)}</span></div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
+  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen"><div class="project-media-frame project-media-frame--slider"><img data-work-preview src="${esc(preview)}" alt="${esc(project.title)} project preview"></div></div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
 }
 
 function workShowcase() {
@@ -203,7 +206,6 @@ function setupWorkShowcase() {
     const preview = showcase.querySelector('[data-work-preview]');
     preview.src = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
     preview.alt = `${project.title} project preview`;
-    showcase.querySelector('.laptop-screen__mark').innerHTML = icon(project.icon);
     announcement.textContent = `Showing ${project.title}, project ${nextIndex + 1} of ${WORK_PROJECTS.length}.`;
     activeSegment.style.width = '100%';
     activeSegment.style.transform = 'none';
