@@ -30,6 +30,8 @@ test('project media uses one rendering model and Studio persists presentation co
   assert.match(studio, /media_type|media_fit|media_scale|media_position_x|media_position_y/);
   assert.match(studio, /معاينة السلايدر|معاينة صفحة المشروع/);
   assert.match(server, /mediaTypes|mediaFits|media_position_x/);
+  assert.match(server, /image\/svg\+xml|image\/gif|safeSvg/);
+  assert.match(studio, /image\/svg\+xml|image\/gif/);
   assert.match(mediaMigration, /media_type text not null default 'screenshot'/);
   assert.match(mediaMigration, /media_scale = 0\.68/);
 });
