@@ -36,27 +36,50 @@ const projectIcon = (project) => {
   if (category.includes('search')) return 'search.svg';
   return 'article.svg';
 };
-const mapManagedProject = (project) => ({
-  slug: project.slug,
-  title: project.title_en || project.title_ar || project.slug,
-  type: project.category_en || project.category_ar || 'Project',
-  icon: projectIcon({ type: project.category_en || project.category_ar, slug: project.slug }),
-  summary: project.short_description_en || project.short_description_ar || '',
-  overview: project.long_description_en || project.long_description_ar || project.short_description_en || '',
-  stack: Array.isArray(project.tech_stack) ? project.tech_stack.filter((tag) => typeof tag === 'string') : [],
-  live: safeUrl(project.project_url),
-  repo: safeUrl(project.github_url),
-  coverImage: safeUrl(project.cover_image_url) || safeUrl(Array.isArray(project.gallery_images) ? project.gallery_images[0] : ''),
-  mediaType: ['logo', 'screenshot', 'poster'].includes(project.media_type) ? project.media_type : 'screenshot',
-  mediaFit: ['contain', 'cover'].includes(project.media_fit) ? project.media_fit : 'contain',
-  mediaScale: Math.min(1.15, Math.max(.4, Number(project.media_scale) || 1)),
-  mediaPositionX: ['left', 'center', 'right'].includes(project.media_position_x) ? project.media_position_x : 'center',
-  mediaPositionY: ['top', 'center', 'bottom'].includes(project.media_position_y) ? project.media_position_y : 'center',
-  features: [],
-  capabilities: [],
-  approach: project.long_description_en || project.long_description_ar || '',
-  limitations: ''
-});
+const mapManagedProject = (project) => {
+  const stack = Array.isArray(project.tech_stack) ? project.tech_stack.filter((tag) => typeof tag === 'string') : [];
+  const featuresList = Array.isArray(project.features) ? project.features : [];
+  const mainFeatures = Array.isArray(project.main_features) ? project.main_features.filter((item) => typeof item === 'string') : [];
+  const gallery = Array.isArray(project.gallery_images) ? project.gallery_images.map(safeUrl).filter(Boolean) : [];
+  return {
+    slug: project.slug,
+    title: project.title_en || project.title_ar || project.slug,
+    titleAr: project.title_ar || '',
+    category: project.category_en || project.category_ar || '',
+    categoryAr: project.category_ar || '',
+    icon: projectIcon({ type: project.category_en || project.category_ar, slug: project.slug }),
+    summary: project.short_description_en || project.short_description_ar || '',
+    overview: project.long_description_en || project.long_description_ar || project.short_description_en || '',
+    stack,
+    live: safeUrl(project.project_url),
+    repo: safeUrl(project.github_url),
+    additional: safeUrl(project.additional_url),
+    coverImage: safeUrl(project.cover_image_url) || safeUrl(Array.isArray(project.gallery_images) ? project.gallery_images[0] : '') || (gallery.length ? gallery[0] : ''),
+    mediaType: ['cover', 'logo', 'screenshot', 'poster'].includes(project.media_type) ? project.media_type : 'cover',
+    mediaFit: ['contain', 'cover'].includes(project.media_fit) ? project.media_fit : 'cover',
+    mediaScale: Math.min(1.15, Math.max(.4, Number(project.media_scale) || 1)),
+    mediaPositionX: ['left', 'center', 'right'].includes(project.media_position_x) ? project.media_position_x : 'center',
+    mediaPositionY: ['top', 'center', 'bottom'].includes(project.media_position_y) ? project.media_position_y : 'center',
+    angledEdge: project.angled_edge !== false,
+    features: featuresList,
+    mainFeatures,
+    projectType: project.project_type || project.category_en || project.category_ar || '',
+    projectRole: project.project_role || '',
+    projectYear: project.project_year || '',
+    projectDuration: project.project_duration || '',
+    projectPlatform: project.project_platform || '',
+    projectStatusLabel: project.project_status_label || '',
+    gallery,
+    galleryCaptions: project.gallery_captions && typeof project.gallery_captions === 'object' ? project.gallery_captions : {},
+    challenge: project.challenge_en || project.challenge_ar || '',
+    solution: project.solution_en || project.solution_ar || '',
+    developmentNotes: project.development_notes_en || project.development_notes_ar || '',
+    limitations: project.limitations_en || project.limitations_ar || '',
+    nextSteps: project.next_steps_en || project.next_steps_ar || '',
+    capabilities: [],
+    approach: project.long_description_en || project.long_description_ar || ''
+  };
+};
 
 async function loadManagedProjects() {
   try {
@@ -74,14 +97,15 @@ const mediaAlignment = (value, axis) => ({ left: 'start', right: 'end', top: 'st
 
 function projectMedia(project, context) {
   const src = safeUrl(project.coverImage);
-  const type = ['logo', 'screenshot', 'poster'].includes(project.mediaType) ? project.mediaType : 'screenshot';
-  const fit = type === 'logo' ? 'contain' : (project.mediaFit === 'cover' ? 'cover' : 'contain');
+  const type = ['cover', 'logo', 'screenshot', 'poster'].includes(project.mediaType) ? project.mediaType : 'cover';
+  const detailFit = type === 'logo' ? 'contain' : (type === 'cover' ? 'cover' : (project.mediaFit === 'cover' ? 'cover' : 'contain'));
+  const fit = context === 'slider' ? (type === 'logo' ? 'contain' : 'contain') : detailFit;
   const scale = Math.min(1.15, Math.max(.4, Number(project.mediaScale) || (type === 'logo' ? .68 : 1)));
   const x = mediaAlignment(project.mediaPositionX, 'x');
   const y = mediaAlignment(project.mediaPositionY, 'y');
   const style = `--project-media-scale:${scale};--project-media-x:${x};--project-media-y:${y};`;
   const media = src
-    ? `<img class="project-media project-media--${type} project-media--${fit}" src="${esc(src)}" alt="${esc(project.title)} project cover">`
+    ? `<img class="project-media project-media--${type} project-media--${fit}" src="${esc(src)}" alt="${esc(project.title)} project cover" loading="${context === 'detail' ? 'eager' : 'lazy'}">`
     : `<div class="project-media-fallback"><strong ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</strong><span dir="rtl">لم تتم إضافة صورة للمشروع</span></div>`;
   return `<div class="project-media-surface project-media-surface--${context}" style="${style}">${media}</div>`;
 }
@@ -144,10 +168,79 @@ function homePage() {
   </main>${footer()}`;
 }
 
+function normalizeFeature(item, index) {
+  const allowed = ['route','globe','layers','code','database','cloud','map-pin','search','article','chart'];
+  if (typeof item === 'string') return { title: item, titleAr: '', description: '', icon: 'layers' };
+  if (!item || typeof item !== 'object') return null;
+  const title = item.title_en || item.title_ar || '';
+  if (!title) return null;
+  return {
+    title: item.title_en || item.title_ar || '',
+    titleAr: item.title_ar || '',
+    description: item.description_en || item.description_ar || '',
+    descriptionAr: item.description_ar || '',
+    icon: allowed.includes(item.icon) ? item.icon : 'layers',
+    order: Number.isInteger(Number(item.order)) ? Number(item.order) : index
+  };
+}
+
+function featureStrip(features) {
+  const items = features.map(normalizeFeature).filter(Boolean).sort((a, b) => a.order - b.order).slice(0, 4);
+  if (!items.length) return '';
+  return `<section class="pd-strip-section" aria-label="Project highlights"><div class="shell pd-shell"><div class="pd-strip">${items.map((item) => `<div class="pd-strip__item"><span class="pd-strip__icon" aria-hidden="true">${icon(item.icon + '.svg')}</span><div><strong ${isArabic(item.titleAr || item.title) ? 'dir="rtl"' : ''}>${esc(item.title)}</strong><span>${esc(item.description)}</span></div></div>`).join('')}</div></div></section>`;
+}
+
+function infoCard(project) {
+  const rows = [
+    project.projectType && { label: 'Project type', value: esc(project.projectType) },
+    project.projectRole && { label: 'My role', value: esc(project.projectRole) },
+    project.stack.length && { label: 'Technologies', value: `<div class="pd-info-tags">${project.stack.map((tag) => `<span>${esc(tag)}</span>`).join('')}</div>`, raw: true },
+    project.projectYear && { label: 'Year', value: esc(project.projectYear) },
+    project.projectDuration && { label: 'Duration', value: esc(project.projectDuration) },
+    project.projectPlatform && { label: 'Platform', value: esc(project.projectPlatform) },
+    project.projectStatusLabel && { label: 'Status', value: esc(project.projectStatusLabel) }
+  ].filter(Boolean);
+  if (!rows.length) return '';
+  return `<aside class="pd-info-card"><div class="pd-info-card__inner">${rows.map((row) => `<div class="pd-info-row"><p>${esc(row.label)}</p>${row.raw ? row.value : `<strong>${row.value}</strong>`}</div>`).join('')}</div></aside>`;
+}
+
+function optionalSection(eyebrow, heading, body) {
+  if (!body) return '';
+  return `<section class="pd-block"><p class="eyebrow">${esc(eyebrow)}</p><h2>${esc(heading)}</h2><p>${esc(body)}</p></section>`;
+}
+
+function projectHeroVisual(project) {
+  const angled = project.angledEdge !== false;
+  const surface = projectMedia(project, 'detail');
+  return `<div class="pd-hero-visual${angled ? ' is-angled' : ''}" aria-label="${esc(project.title)} project visual">${surface}<div class="pd-hero-blend" aria-hidden="true"></div></div>`;
+}
+
 function projectPage(project) {
   if (!project) return `${header()}<main class="not-found section"><div class="shell"><p class="eyebrow">Not found</p><h1>This project page is not available.</h1></div></main>${footer()}`;
-  const actions = [project.live && `<a class="button" href="${project.live}" target="_blank" rel="noopener noreferrer">Open live project ${icon('external-link.svg')}</a>`, project.repo && `<a class="button button-quiet" href="${project.repo}" target="_blank" rel="noopener noreferrer">${icon('github.svg')} View repository</a>`].filter(Boolean).join('');
-  return `${header()}<main class="project-page"><section class="project-hero"><div class="shell"><a class="breadcrumb" href="/#projects">Portfolio <span>/</span> ${esc(project.title)}</a><div class="project-hero-grid"><div><p class="eyebrow">${esc(project.type)}</p><h1 ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h1><p class="project-summary">${esc(project.summary)}</p>${actions ? `<div class="project-actions">${actions}</div>` : ''}</div>${visual(project, true)}</div></div></section><section class="section project-details"><div class="shell details-grid"><div class="detail-main"><section><p class="eyebrow">Overview</p><h2>About the project</h2><p>${esc(project.overview)}</p></section><section><p class="eyebrow">Scope</p><h2>Implemented direction</h2><ul class="feature-list">${project.features.map((item) => `<li>${icon('arrow-right.svg')}${esc(item)}</li>`).join('')}</ul></section><section><p class="eyebrow">Technical thinking</p><h2>Capabilities</h2><ul class="feature-list">${project.capabilities.map((item) => `<li>${icon('arrow-right.svg')}${esc(item)}</li>`).join('')}</ul></section><section><p class="eyebrow">Process</p><h2>Development approach</h2><p>${esc(project.approach)}</p></section><section><p class="eyebrow">Availability</p><h2>Current limitations</h2><p>${esc(project.limitations)}</p></section></div><aside class="project-sidebar"><div><p>Project type</p><strong>${esc(project.type)}</strong></div><div><p>Verified technologies</p><div class="tag-list">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div></div></aside></div></section><section class="project-cta"><div class="shell"><div><p class="eyebrow">Next project</p><h2>Looking for a practical build partner?</h2></div><a class="button" href="mailto:${SITE.email}">${icon('mail.svg')} Start a conversation</a></div></section></main>${footer()}`;
+  const live = project.live ? `<a class="button pd-live" href="${project.live}" target="_blank" rel="noopener noreferrer">Open live project ${icon('external-link.svg')}</a>` : '';
+  const repo = project.repo ? `<a class="button button-quiet pd-repo" href="${project.repo}" target="_blank" rel="noopener noreferrer">${icon('github.svg')} View repository</a>` : '';
+  const additional = project.additional ? `<a class="button button-quiet pd-extra" href="${project.additional}" target="_blank" rel="noopener noreferrer">${icon('globe.svg')} Additional link</a>` : '';
+  const actions = (live || repo || additional) ? `<div class="pd-hero-actions">${live}${additional}${repo}</div>` : '';
+  const features = Array.isArray(project.features) ? project.features : [];
+  const mainFeatures = Array.isArray(project.mainFeatures) ? project.mainFeatures.filter(Boolean) : [];
+  const gallery = Array.isArray(project.gallery) ? project.gallery : [];
+  const captions = project.galleryCaptions && typeof project.galleryCaptions === 'object' ? project.galleryCaptions : {};
+  const blocks = [
+    optionalSection('Challenge', 'The challenge', project.challenge),
+    optionalSection('Solution', 'The solution', project.solution),
+    mainFeatures.length ? `<section class="pd-block"><p class="eyebrow">Main features</p><h2>What it does</h2><ul class="pd-feature-list">${mainFeatures.map((item) => `<li>${icon('arrow-right.svg')}${esc(item)}</li>`).join('')}</ul></section>` : '',
+    gallery.length ? `<section class="pd-block pd-gallery"><p class="eyebrow">Gallery</p><h2>Project gallery</h2><div class="pd-gallery-grid">${gallery.map((src, index) => `<figure><img src="${esc(src)}" alt="${esc(project.title)} gallery image ${index + 1}" loading="lazy">${captions[src] ? `<figcaption>${esc(captions[src])}</figcaption>` : ''}</figure>`).join('')}</div></section>` : '',
+    optionalSection('Process', 'Development notes', project.developmentNotes),
+    optionalSection('Availability', 'Known limitations', project.limitations),
+    optionalSection('Next', 'Next steps', project.nextSteps)
+  ].filter(Boolean).join('');
+  return `${header()}<main class="project-page pd-page">
+    <section class="pd-hero"><div class="shell pd-shell"><a class="breadcrumb" href="/#projects">Portfolio <span>/</span> ${esc(project.title)}</a><div class="pd-hero-grid"><div class="pd-hero-left"><p class="eyebrow pd-category">${esc(project.type)}</p><h1 class="pd-title" ${isArabic(project.titleAr || project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h1><p class="pd-summary">${esc(project.summary)}</p>${actions}</div><div class="pd-hero-right">${projectHeroVisual(project)}</div></div></div></section>
+    ${featureStrip(features)}
+    <section class="pd-overview"><div class="shell pd-shell"><div class="pd-overview-grid"><div class="pd-overview-main"><p class="eyebrow">Overview</p><h2 class="pd-overview-title">About the project</h2><p class="pd-about">${esc(project.overview)}</p></div>${infoCard(project)}</div></div></section>
+    <section class="pd-sections"><div class="shell pd-shell">${blocks}</div></section>
+    <section class="project-cta"><div class="shell"><div><p class="eyebrow">Next project</p><h2>Looking for a practical build partner?</h2></div><a class="button" href="mailto:${SITE.email}">${icon('mail.svg')} Start a conversation</a></div></section>
+  </main>${footer()}`;
 }
 
 function setupNavigation() {

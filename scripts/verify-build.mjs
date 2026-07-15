@@ -13,7 +13,8 @@ const required = [
   'server/portfolio-studio.service',
   'server/nginx-studio.conf',
   'server/migrations/001_portfolio_studio.sql',
-  'server/migrations/003_project_media_presentation.sql'
+  'server/migrations/003_project_media_presentation.sql',
+  'server/migrations/004_project_detail_fields.sql'
 ];
 
 for (const file of required) await stat(resolve(root, file));
