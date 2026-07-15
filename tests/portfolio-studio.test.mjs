@@ -24,6 +24,7 @@ test('Studio protects management with the approved account', () => {
 
 test('project media uses one rendering model and Studio persists presentation controls', () => {
   assert.match(app, /function projectMedia\(project, context\)/);
+  assert.match(app, /gallery_images\) \? project\.gallery_images\[0\]/);
   assert.match(app, /projectMedia\(project, 'slider'\)/);
   assert.match(app, /projectMedia\(project, context\)/);
   assert.doesNotMatch(app, /WORK_PLACEHOLDER|project-media-frame|laptop-screen__mark/);

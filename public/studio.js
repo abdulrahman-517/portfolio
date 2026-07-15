@@ -87,7 +87,8 @@ function signedImage(path, target) {
 }
 
 function projectImage(project) {
-  return project.cover_image_url ? `<img src="${esc(project.cover_image_url)}" alt="">` : `<span>${esc((project.title_en || project.title_ar || '?').slice(0, 2))}</span>`;
+  const image = project.cover_image_url || project.gallery_images?.[0];
+  return image ? `<img src="${esc(image)}" alt="">` : `<span>${esc((project.title_en || project.title_ar || '?').slice(0, 2))}</span>`;
 }
 
 function projectRows(list) {
@@ -117,7 +118,7 @@ function renderProjects() {
 }
 
 function renderMediaLibrary() {
-  const cards = projects.filter((project) => project.cover_image_path || project.cover_image_url).map((project) => `<article class="studio-media-card">${project.cover_image_url ? `<img src="${esc(project.cover_image_url)}" alt="${esc(project.title_ar || project.title_en || project.slug)}">` : `<span>${esc(project.title_ar || project.title_en || project.slug)}</span>`}<a class="studio-icon-button" href="/studio/projects/${project.id}" aria-label="تعديل ${esc(project.title_ar || project.title_en || project.slug)}">تعديل</a></article>`).join('');
+  const cards = projects.filter((project) => project.cover_image_path || project.cover_image_url || project.gallery_images?.length).map((project) => { const image = project.cover_image_url || project.gallery_images?.[0]; return `<article class="studio-media-card">${image ? `<img src="${esc(image)}" alt="${esc(project.title_ar || project.title_en || project.slug)}">` : `<span>${esc(project.title_ar || project.title_en || project.slug)}</span>`}<a class="studio-icon-button" href="/studio/projects/${project.id}" aria-label="تعديل ${esc(project.title_ar || project.title_en || project.slug)}">تعديل</a></article>`; }).join('');
   return `<section class="studio-media">${cards || '<p class="studio-help">ارفع صور الغلاف من محرر كل مشروع.</p>'}</section>`;
 }
 
@@ -299,7 +300,7 @@ function updateFormPreview(form, existing = {}) {
   const file = form.cover.files?.[0];
   if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
   mediaPreviewUrl = file ? URL.createObjectURL(file) : '';
-  const src = mediaPreviewUrl || existing.cover_image_url || '';
+  const src = mediaPreviewUrl || existing.cover_image_url || existing.gallery_images?.[0] || '';
   const settings = mediaSettings({ media_type: form.media_type.value, media_fit: form.media_fit.value, media_scale: form.media_scale.value, media_position_x: form.media_position_x.value, media_position_y: form.media_position_y.value });
   form.querySelector('[data-media-scale-output]').textContent = settings.scale.toFixed(2);
   form.media_fit.value = settings.fit;

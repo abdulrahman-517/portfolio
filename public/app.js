@@ -46,7 +46,7 @@ const mapManagedProject = (project) => ({
   stack: Array.isArray(project.tech_stack) ? project.tech_stack.filter((tag) => typeof tag === 'string') : [],
   live: safeUrl(project.project_url),
   repo: safeUrl(project.github_url),
-  coverImage: safeUrl(project.cover_image_url),
+  coverImage: safeUrl(project.cover_image_url) || safeUrl(Array.isArray(project.gallery_images) ? project.gallery_images[0] : ''),
   mediaType: ['logo', 'screenshot', 'poster'].includes(project.media_type) ? project.media_type : 'screenshot',
   mediaFit: ['contain', 'cover'].includes(project.media_fit) ? project.media_fit : 'contain',
   mediaScale: Math.min(1.15, Math.max(.4, Number(project.media_scale) || 1)),
