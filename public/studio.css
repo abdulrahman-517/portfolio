@@ -155,3 +155,26 @@ dialog::backdrop { background:rgba(0,0,0,.7); }
   .studio-form-actions { position:static; display:grid; grid-template-columns:1fr; padding:0; border:0; background:transparent; box-shadow:none; }
   .studio-form-actions .studio-button { width:100%; }
 }
+
+.studio-range { width:100%; accent-color:var(--studio-cyan); }
+.studio-media-controls output { color:var(--studio-cyan); font-variant-numeric:tabular-nums; }
+.studio-media-preview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:22px; }
+.studio-media-preview article { min-width:0; padding:16px; border:1px solid var(--studio-line); border-radius:9px; background:#031a2a; }
+.studio-media-preview h3 { margin:0 0 12px; color:var(--studio-frost); font-size:.9rem; }
+.studio-preview__detail { aspect-ratio:16 / 9; position:relative; overflow:hidden; border:1px solid rgba(121,221,235,.22); border-radius:6px; background:#06263b; }
+.studio-preview__laptop { position:relative; }
+.studio-project-media-surface { position:absolute; inset:5% 5.5%; display:grid; align-items:var(--studio-media-y,center); justify-items:var(--studio-media-x,center); overflow:hidden; background:radial-gradient(circle at 50% 48%,rgba(47,145,183,.2),rgba(6,38,59,.12) 42%,rgba(2,17,31,.72) 100%); box-shadow:inset 0 0 0 1px rgba(121,221,235,.08); }
+.studio-project-media { display:block; max-width:100%; max-height:100%; object-position:center; transform:scale(var(--studio-media-scale,1)); transform-origin:center; }
+.studio-project-media--logo { width:auto; height:auto; max-width:70%; max-height:62%; object-fit:contain; }
+.studio-project-media--poster { width:auto; height:auto; max-width:92%; max-height:92%; object-fit:contain; }
+.studio-project-media--screenshot { width:100%; height:100%; object-fit:contain; }
+.studio-project-media--screenshot.studio-project-media--cover { object-fit:cover; }
+.studio-preview__laptop .studio-project-media--logo { width:auto; height:auto; max-width:70%; max-height:62%; object-fit:contain; }
+.studio-preview__laptop .studio-project-media--poster { width:auto; height:auto; max-width:92%; max-height:92%; object-fit:contain; }
+.studio-preview__laptop .studio-project-media--screenshot { width:100%; height:100%; object-fit:contain; }
+.studio-preview__laptop .studio-project-media--screenshot.studio-project-media--cover { object-fit:cover; }
+.studio-preview__detail .studio-project-media--logo { max-width:76%; max-height:68%; }
+.studio-project-media__fallback { max-width:86%; display:grid; justify-items:center; gap:6px; color:var(--studio-frost); text-align:center; }
+.studio-project-media__fallback strong { font-size:.9rem; }
+.studio-project-media__fallback span { color:var(--studio-muted); font-size:.72rem; }
+@media (max-width:820px) { .studio-media-preview { grid-template-columns:1fr; } }

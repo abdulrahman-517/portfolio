@@ -5,6 +5,7 @@ const app = document.querySelector('#studio-app');
 let supabase = null;
 let projects = [];
 let formDirty = false;
+let mediaPreviewUrl = '';
 
 const esc = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 const formatDate = (value) => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(new Date(value)) : 'غير منشور';
@@ -203,7 +204,7 @@ function confirmDelete(id) {
   dialog.showModal();
 }
 
-const blankProject = () => ({ title_en: '', title_ar: '', slug: '', category_en: '', category_ar: '', short_description_en: '', short_description_ar: '', long_description_en: '', long_description_ar: '', tech_stack: [], project_url: '', github_url: '', status: 'draft', visible: true, featured: false, sort_order: projects.length + 1, gallery_images: [] });
+const blankProject = () => ({ title_en: '', title_ar: '', slug: '', category_en: '', category_ar: '', short_description_en: '', short_description_ar: '', long_description_en: '', long_description_ar: '', tech_stack: [], project_url: '', github_url: '', status: 'draft', visible: true, featured: false, sort_order: projects.length + 1, gallery_images: [], media_type: 'screenshot', media_fit: 'contain', media_scale: 1, media_position_x: 'center', media_position_y: 'center' });
 
 function field(name, label, value, options = {}) {
   const type = options.type || 'text';
@@ -220,14 +221,31 @@ function formSection(title, content, hint = '') {
   return `<section class="studio-form-section"><h2 class="studio-form-section__heading">${esc(title)}</h2>${hint ? `<p class="studio-form-section__hint">${esc(hint)}</p>` : ''}${content}</section>`;
 }
 
+function mediaSettings(project = {}) {
+  const type = ['logo', 'screenshot', 'poster'].includes(project.media_type) ? project.media_type : 'screenshot';
+  return {
+    type,
+    fit: type === 'logo' ? 'contain' : (project.media_fit === 'cover' ? 'cover' : 'contain'),
+    scale: Math.min(1.15, Math.max(.4, Number(project.media_scale) || (type === 'logo' ? .68 : 1))),
+    x: ['left', 'center', 'right'].includes(project.media_position_x) ? project.media_position_x : 'center',
+    y: ['top', 'center', 'bottom'].includes(project.media_position_y) ? project.media_position_y : 'center'
+  };
+}
+
+function mediaControls(project) {
+  const media = mediaSettings(project);
+  return `<div class="studio-form-grid studio-media-controls"><div class="studio-field"><label for="media_type">نوع الصورة</label><select class="studio-select" id="media_type" name="media_type" data-media-control><option value="logo" ${media.type === 'logo' ? 'selected' : ''}>شعار</option><option value="screenshot" ${media.type === 'screenshot' ? 'selected' : ''}>لقطة واجهة</option><option value="poster" ${media.type === 'poster' ? 'selected' : ''}>ملصق أو عمل بصري</option></select></div><div class="studio-field"><label for="media_fit">طريقة الاحتواء</label><select class="studio-select" id="media_fit" name="media_fit" data-media-control><option value="contain" ${media.fit === 'contain' ? 'selected' : ''}>إظهار الصورة كاملة</option><option value="cover" ${media.fit === 'cover' ? 'selected' : ''}>ملء الإطار</option></select></div><div class="studio-field"><label for="media_scale">حجم الصورة <output data-media-scale-output>${media.scale.toFixed(2)}</output></label><input class="studio-range" id="media_scale" name="media_scale" data-media-control type="range" min="0.40" max="1.15" step="0.01" value="${media.scale}"></div><div class="studio-field"><label for="media_position_x">الموضع الأفقي</label><select class="studio-select" id="media_position_x" name="media_position_x" data-media-control><option value="left" ${media.x === 'left' ? 'selected' : ''}>يسار</option><option value="center" ${media.x === 'center' ? 'selected' : ''}>وسط</option><option value="right" ${media.x === 'right' ? 'selected' : ''}>يمين</option></select></div><div class="studio-field"><label for="media_position_y">الموضع الرأسي</label><select class="studio-select" id="media_position_y" name="media_position_y" data-media-control><option value="top" ${media.y === 'top' ? 'selected' : ''}>أعلى</option><option value="center" ${media.y === 'center' ? 'selected' : ''}>منتصف</option><option value="bottom" ${media.y === 'bottom' ? 'selected' : ''}>أسفل</option></select></div></div>`;
+}
+
 function projectForm(project) {
   const basic = `<div class="studio-form-grid">${field('title_ar', 'العنوان العربي', project.title_ar, { required: true })}${field('title_en', 'العنوان الإنجليزي', project.title_en, { required: true })}${field('category_ar', 'التصنيف العربي', project.category_ar, { required: true })}${field('category_en', 'التصنيف الإنجليزي', project.category_en, { required: true })}${field('slug', 'المعرّف بالرابط', project.slug, { required: true, help: 'حروف إنجليزية صغيرة وأرقام وشرطات فقط.' })}${field('sort_order', 'ترتيب الظهور', project.sort_order, { type: 'number', required: true })}</div>`;
   const descriptions = `<div class="studio-form-grid">${field('short_description_ar', 'الوصف العربي المختصر', project.short_description_ar, { type: 'textarea', required: true, wide: true })}${field('short_description_en', 'الوصف الإنجليزي المختصر', project.short_description_en, { type: 'textarea', required: true, wide: true })}${field('long_description_ar', 'الوصف العربي التفصيلي', project.long_description_ar, { type: 'textarea', wide: true })}${field('long_description_en', 'الوصف الإنجليزي التفصيلي', project.long_description_en, { type: 'textarea', wide: true })}</div>`;
   const links = `<div class="studio-form-grid">${field('tech_stack', 'التقنيات المستخدمة', (project.tech_stack || []).join(', '), { wide: true, help: 'افصل بين التقنيات بفاصلة.' })}${field('project_url', 'رابط المشروع الحي', project.project_url, { type: 'url' })}${field('github_url', 'رابط GitHub', project.github_url, { type: 'url' })}</div>`;
   const media = `<div class="studio-form-grid"><div class="studio-field studio-field--wide"><label for="cover">الصورة الرئيسية</label><input class="studio-input studio-input--ltr studio-file-input" id="cover" name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><p class="studio-help">JPEG أو PNG أو WebP أو AVIF حتى 10 ميغابايت.</p></div><div class="studio-field studio-field--wide"><label for="gallery">معرض الصور</label><input class="studio-input studio-input--ltr studio-file-input" id="gallery" name="gallery" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple></div></div><section class="studio-media" data-current-media></section>`;
   const publishing = `<div class="studio-form-grid"><div class="studio-field"><label for="status">الحالة</label><select class="studio-select" id="status" name="status">${['draft', 'published', 'private', 'development', 'archived'].map((status) => `<option value="${status}" ${project.status === status ? 'selected' : ''}>${statusLabel(status)}</option>`).join('')}</select></div><div class="studio-field"><label>إعدادات النشر</label><div class="studio-switch-group"><label class="studio-switch"><input name="visible" type="checkbox" ${project.visible ? 'checked' : ''}> ظاهر في الموقع العام</label><label class="studio-switch"><input name="featured" type="checkbox" ${project.featured ? 'checked' : ''}> مشروع مميز</label></div></div></div>`;
-  const preview = `<section class="studio-card studio-preview" data-preview-surface><p class="studio-help">معاينة خاصة</p><h2>${esc(project.title_ar || project.title_en || 'مشروع بلا عنوان')}</h2><p>${esc(project.short_description_ar || '')}</p><div class="studio-preview__laptop" data-preview-laptop><div class="studio-preview__placeholder">لم تُحدد صورة غلاف</div></div></section><div class="studio-form-actions"><a class="studio-button studio-button--quiet" href="/studio/projects/">إلغاء</a><button class="studio-button studio-button--quiet" type="button" data-preview-form>تحديث المعاينة</button><button class="studio-button studio-button--quiet" type="submit" data-intent="draft">حفظ كمسودة</button><button class="studio-button" type="submit" data-intent="publish">نشر المشروع</button></div>`;
-  return `<form class="studio-form" data-project-form novalidate>${formSection('المعلومات الأساسية', basic)}${formSection('أوصاف المشروع', descriptions)}${formSection('التقنيات والروابط', links)}${formSection('الصور والوسائط', media, 'ارفع صورة الغلاف وصورًا إضافية للمشروع.')}${formSection('إعدادات الظهور والنشر', publishing)}${formSection('المعاينة والإجراءات', preview)}</form>`;
+  const presentationPreview = `<section class="studio-media-preview" data-media-preview><article><h3>معاينة السلايدر</h3><div class="studio-preview__laptop" data-media-preview-slider></div></article><article><h3>معاينة صفحة المشروع</h3><div class="studio-preview__detail" data-media-preview-detail></div></article></section>`;
+  const actions = `<div class="studio-form-actions"><a class="studio-button studio-button--quiet" href="/studio/projects/">إلغاء</a><button class="studio-button studio-button--quiet" type="submit" data-intent="draft">حفظ كمسودة</button><button class="studio-button" type="submit" data-intent="publish">نشر المشروع</button></div>`;
+  return `<form class="studio-form" data-project-form novalidate>${formSection('المعلومات الأساسية', basic)}${formSection('أوصاف المشروع', descriptions)}${formSection('التقنيات والروابط', links)}${formSection('الصور والوسائط', media, 'ارفع صورة الغلاف وصورًا إضافية للمشروع.')}${formSection('طريقة عرض الصورة', `${mediaControls(project)}${presentationPreview}`, 'تُحدّث المعاينة مباشرة قبل حفظ المشروع.')}${formSection('إعدادات الظهور والنشر', publishing)}${formSection('الإجراءات', actions)}</form>`;
 }
 
 async function renderProjectEditor(id) {
@@ -240,7 +258,15 @@ async function renderProjectEditor(id) {
   form.addEventListener('input', () => { formDirty = true; });
   form.addEventListener('change', () => { formDirty = true; });
   form.querySelectorAll('[data-intent]').forEach((button) => button.addEventListener('click', () => { form.dataset.intent = button.dataset.intent; }));
-  form.querySelector('[data-preview-form]').addEventListener('click', () => updateFormPreview(form));
+  form.querySelectorAll('[data-media-control]').forEach((control) => {
+    control.addEventListener('input', () => updateFormPreview(form, project));
+    control.addEventListener('change', () => updateFormPreview(form, project));
+  });
+  form.media_type.addEventListener('change', () => {
+    if (form.media_type.value === 'logo') { form.media_fit.value = 'contain'; form.media_scale.value = '.68'; }
+    updateFormPreview(form, project);
+  });
+  form.cover.addEventListener('change', () => updateFormPreview(form, project));
   form.addEventListener('submit', (event) => { event.preventDefault(); saveProject(project, form, form.dataset.intent || 'draft'); });
   updateFormPreview(form, project);
 }
@@ -261,16 +287,24 @@ function renderMedia(project, form) {
   surface.querySelectorAll('[data-remove-gallery]').forEach((button) => button.addEventListener('click', () => { project.gallery_images = project.gallery_images.filter((path) => path !== button.dataset.removeGallery); formDirty = true; renderMedia(project, form); }));
 }
 
+function previewMediaMarkup(src, settings, title, context) {
+  const alignment = { left: 'start', center: 'center', right: 'end', top: 'start', bottom: 'end' };
+  const style = `--studio-media-scale:${settings.scale};--studio-media-x:${alignment[settings.x]};--studio-media-y:${alignment[settings.y]};`;
+  const media = src ? `<img class="studio-project-media studio-project-media--${settings.type} studio-project-media--${settings.fit}" src="${esc(src)}" alt="معاينة ${esc(title)}">` : `<div class="studio-project-media__fallback"><strong>${esc(title)}</strong><span>لم تتم إضافة صورة للمشروع</span></div>`;
+  return `<div class="studio-project-media-surface studio-project-media-surface--${context}" style="${style}">${media}</div>`;
+}
+
 function updateFormPreview(form, existing = {}) {
   const title = form.title_ar.value || form.title_en.value || 'مشروع بلا عنوان';
-  const summary = form.short_description_ar.value || form.short_description_en.value;
-  const surface = document.querySelector('[data-preview-surface]');
-  surface.querySelector('h2').textContent = title;
-  surface.querySelector('p:not(.studio-help)').textContent = summary;
   const file = form.cover.files?.[0];
-  const laptop = surface.querySelector('[data-preview-laptop]');
-  if (file) laptop.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="معاينة">`;
-  else if (existing.cover_image_url) laptop.innerHTML = `<img src="${esc(existing.cover_image_url)}" alt="معاينة">`;
+  if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+  mediaPreviewUrl = file ? URL.createObjectURL(file) : '';
+  const src = mediaPreviewUrl || existing.cover_image_url || '';
+  const settings = mediaSettings({ media_type: form.media_type.value, media_fit: form.media_fit.value, media_scale: form.media_scale.value, media_position_x: form.media_position_x.value, media_position_y: form.media_position_y.value });
+  form.querySelector('[data-media-scale-output]').textContent = settings.scale.toFixed(2);
+  form.media_fit.value = settings.fit;
+  form.querySelector('[data-media-preview-slider]').innerHTML = previewMediaMarkup(src, settings, title, 'slider');
+  form.querySelector('[data-media-preview-detail]').innerHTML = previewMediaMarkup(src, settings, title, 'detail');
 }
 
 async function uploadFile(file) {
@@ -290,7 +324,8 @@ function readProject(form, existing) {
   const projectUrl = form.project_url.value.trim();
   const githubUrl = form.github_url.value.trim();
   if (!isSafeUrl(projectUrl) || !isSafeUrl(githubUrl)) throw new Error('يجب أن تستخدم روابط المشروع وGitHub بروتوكول http أو https.');
-  return { slug, title_en: form.title_en.value.trim(), title_ar: form.title_ar.value.trim(), category_en: form.category_en.value.trim(), category_ar: form.category_ar.value.trim(), short_description_en: form.short_description_en.value.trim(), short_description_ar: form.short_description_ar.value.trim(), long_description_en: form.long_description_en.value.trim(), long_description_ar: form.long_description_ar.value.trim(), tech_stack: form.tech_stack.value.split(',').map((item) => item.trim()).filter(Boolean), project_url: projectUrl || null, github_url: githubUrl || null, status: form.status.value, visible: form.visible.checked, featured: form.featured.checked, sort_order: Number(form.sort_order.value), cover_image_url: existing.cover_image_url || null, cover_image_path: existing.cover_image_path || null, gallery_images: existing.gallery_images || [] };
+  const settings = mediaSettings({ media_type: form.media_type.value, media_fit: form.media_fit.value, media_scale: form.media_scale.value, media_position_x: form.media_position_x.value, media_position_y: form.media_position_y.value });
+  return { slug, title_en: form.title_en.value.trim(), title_ar: form.title_ar.value.trim(), category_en: form.category_en.value.trim(), category_ar: form.category_ar.value.trim(), short_description_en: form.short_description_en.value.trim(), short_description_ar: form.short_description_ar.value.trim(), long_description_en: form.long_description_en.value.trim(), long_description_ar: form.long_description_en.value.trim(), tech_stack: form.tech_stack.value.split(',').map((item) => item.trim()).filter(Boolean), project_url: projectUrl || null, github_url: githubUrl || null, status: form.status.value, visible: form.visible.checked, featured: form.featured.checked, sort_order: Number(form.sort_order.value), cover_image_url: existing.cover_image_url || null, cover_image_path: existing.cover_image_path || null, gallery_images: existing.gallery_images || [], media_type: settings.type, media_fit: settings.fit, media_scale: settings.scale, media_position_x: settings.x, media_position_y: settings.y };
 }
 
 async function saveProject(existing, form, intent) {

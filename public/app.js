@@ -47,6 +47,11 @@ const mapManagedProject = (project) => ({
   live: safeUrl(project.project_url),
   repo: safeUrl(project.github_url),
   coverImage: safeUrl(project.cover_image_url),
+  mediaType: ['logo', 'screenshot', 'poster'].includes(project.media_type) ? project.media_type : 'screenshot',
+  mediaFit: ['contain', 'cover'].includes(project.media_fit) ? project.media_fit : 'contain',
+  mediaScale: Math.min(1.15, Math.max(.4, Number(project.media_scale) || 1)),
+  mediaPositionX: ['left', 'center', 'right'].includes(project.media_position_x) ? project.media_position_x : 'center',
+  mediaPositionY: ['top', 'center', 'bottom'].includes(project.media_position_y) ? project.media_position_y : 'center',
   features: [],
   capabilities: [],
   approach: project.long_description_en || project.long_description_ar || '',
@@ -65,12 +70,25 @@ async function loadManagedProjects() {
   } catch { return false; }
 }
 
+const mediaAlignment = (value, axis) => ({ left: 'start', right: 'end', top: 'start', bottom: 'end', center: 'center' }[value] || (axis === 'x' ? 'center' : 'center'));
+
+function projectMedia(project, context) {
+  const src = safeUrl(project.coverImage);
+  const type = ['logo', 'screenshot', 'poster'].includes(project.mediaType) ? project.mediaType : 'screenshot';
+  const fit = type === 'logo' ? 'contain' : (project.mediaFit === 'cover' ? 'cover' : 'contain');
+  const scale = Math.min(1.15, Math.max(.4, Number(project.mediaScale) || (type === 'logo' ? .68 : 1)));
+  const x = mediaAlignment(project.mediaPositionX, 'x');
+  const y = mediaAlignment(project.mediaPositionY, 'y');
+  const style = `--project-media-scale:${scale};--project-media-x:${x};--project-media-y:${y};`;
+  const media = src
+    ? `<img class="project-media project-media--${type} project-media--${fit}" src="${esc(src)}" alt="${esc(project.title)} project cover">`
+    : `<div class="project-media-fallback"><strong ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</strong><span dir="rtl">لم تتم إضافة صورة للمشروع</span></div>`;
+  return `<div class="project-media-surface project-media-surface--${context}" style="${style}">${media}</div>`;
+}
+
 function visual(project, detail = false) {
-  const previewUrl = safeUrl(project.coverImage);
-  const media = previewUrl
-    ? `<img src="${esc(previewUrl)}" alt="${esc(project.title)} project cover">`
-    : `<span class="project-placeholder" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</span>`;
-  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual"><div class="project-media-frame${previewUrl ? ' has-project-image' : ''}">${media}</div></div>`;
+  const context = detail ? 'detail' : 'card';
+  return `<div class="project-visual${detail ? ' detail-visual' : ''}" aria-label="${esc(project.title)} project visual">${projectMedia(project, context)}</div>`;
 }
 
 function hydrateProjectImages() {
@@ -94,16 +112,13 @@ function card(project) {
   return `<article class="project-card">${visual(project)}<div class="project-card-body"><p class="project-type">${esc(project.type)}</p><h3 ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="project-summary-small">${esc(project.summary)}</p><div class="tag-list">${project.stack.map((tag) => `<span>${tag}</span>`).join('')}</div><a class="text-link" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a></div></article>`;
 }
 
-const WORK_PLACEHOLDER = '/assets/work-slider/placeholders/01-project-placeholder-arctic-4k.png';
-
 function workSlideContent(project, index) {
   const liveAction = project.live ? `<a class="button button-quiet" href="${project.live}" target="_blank" rel="noopener noreferrer">Open live ${icon('external-link.svg')}</a>` : '';
   return `<p class="eyebrow">Selected Work</p><div class="work-showcase__meta"><span>${String(index + 1).padStart(2, '0')}</span><span aria-hidden="true">/</span><span>${String(WORK_PROJECTS.length).padStart(2, '0')}</span></div><p class="work-showcase__type">${esc(project.type)}</p><h3 id="active-work-title" ${isArabic(project.title) ? 'dir="rtl"' : ''}>${esc(project.title)}</h3><p class="work-showcase__summary">${esc(project.summary)}</p><div class="tag-list work-showcase__tags">${project.stack.map((tag) => `<span>${esc(tag)}</span>`).join('')}</div><div class="work-showcase__actions"><a class="button" href="/projects/${project.slug}/">View project ${icon('arrow-right.svg')}</a>${liveAction}</div>`;
 }
 
 function workLaptop(project) {
-  const preview = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
-  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen"><div class="project-media-frame project-media-frame--slider"><img data-work-preview src="${esc(preview)}" alt="${esc(project.title)} project preview"></div></div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
+  return `<div class="laptop work-showcase__laptop" aria-label="${esc(project.title)} project preview"><div class="laptop__lid"><div class="laptop-screen">${projectMedia(project, 'slider')}</div><span class="laptop__camera" aria-hidden="true"></span></div><div class="laptop__base" aria-hidden="true"></div></div>`;
 }
 
 function workShowcase() {
@@ -203,9 +218,7 @@ function setupWorkShowcase() {
     const project = WORK_PROJECTS[nextIndex];
     showcase.dataset.workIndex = String(nextIndex);
     content.innerHTML = workSlideContent(project, nextIndex);
-    const preview = showcase.querySelector('[data-work-preview]');
-    preview.src = safeUrl(project.coverImage) || WORK_PLACEHOLDER;
-    preview.alt = `${project.title} project preview`;
+    showcase.querySelector('.laptop-screen').innerHTML = projectMedia(project, 'slider');
     announcement.textContent = `Showing ${project.title}, project ${nextIndex + 1} of ${WORK_PROJECTS.length}.`;
     activeSegment.style.width = '100%';
     activeSegment.style.transform = 'none';
